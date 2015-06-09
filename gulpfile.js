@@ -170,6 +170,8 @@ gulp.task('git-version', function (cb) {
 });
 
 gulp.task('git-submodule-update', function () {
+    var deferred = Q.defer();
+
     git.updateSubmodule({ args: '--init' });
 
     //run('git submodule init').exec();
@@ -182,6 +184,14 @@ gulp.task('git-submodule-update', function () {
 
     //// Switch to master branch in main repo (releases can only be done from this branch)
     ////run(command).exec();
+
+    // This is here to force the command to wait before returning...
+    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+    setTimeout(function () {
+        deferred.resolve();
+    }, 3000);
+
+    return deferred.promise;
 });
 
 gulp.task('git-checkout', ['git-submodule-update'], function () {
@@ -189,11 +199,21 @@ gulp.task('git-checkout', ['git-submodule-update'], function () {
         git.checkout('master');
     };
 
+    var deferred = Q.defer();
+
     // Switch to master branch in submodules (defaults to headless with no branch)
     runCommandOnSubmodules(command);
 
     // Switch to master branch in main repo (releases can only be done from this branch)
     //command();
+
+    // This is here to force the command to wait before returning...
+    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+    setTimeout(function () {
+        deferred.resolve();
+    }, 3000);
+
+    return deferred.promise;
 });
 
 gulp.task('git-commit', function () {
@@ -206,27 +226,57 @@ gulp.task('git-commit', function () {
         git.commit('Release version ' + version, { args: '-a' });
     };
 
+    var deferred = Q.defer();
+
     // Commit submodules
     runCommandOnSubmodules(command);
 
     // Commit main repo
     command('./');
+
+    // This is here to force the command to wait before returning...
+    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+    setTimeout(function () {
+        deferred.resolve();
+    }, 3000);
+
+    return deferred.promise;
 });
 
 gulp.task('git-tag', ['git-commit'], function () {
     var command = function (cwd) {
         git.tag(version, 'Release version ' + version, { cwd: cwd });
     };
+
+    var deferred = Q.defer();
     
     // Tag submodules
     runCommandOnSubmodules(command);
 
     // Tag main repo
     command();
+
+    // This is here to force the command to wait before returning...
+    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+    setTimeout(function () {
+        deferred.resolve();
+    }, 3000);
+
+    return deferred.promise;
 });
 
 gulp.task('git-update-submodule-final', ['git-tag'], function () {
+    var deferred = Q.defer();
+
     git.updateSubmodule();
+
+    // This is here to force the command to wait before returning...
+    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+    setTimeout(function () {
+        deferred.resolve();
+    }, 3000);
+
+    return deferred.promise;
 });
 
 gulp.task('git-push', ['git-update-submodule-final'], function () {
@@ -243,11 +293,21 @@ gulp.task('git-push', ['git-update-submodule-final'], function () {
         });
     };
 
+    var deferred = Q.defer();
+
     // Push submodules
     runCommandOnSubmodules(command);
 
     // Push main repo
     command2();
+
+    // This is here to force the command to wait before returning...
+    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+    setTimeout(function () {
+        deferred.resolve();
+    }, 3000);
+
+    return deferred.promise;
 });
 
 // Performs a release
