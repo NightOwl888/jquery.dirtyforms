@@ -199,7 +199,7 @@ gulp.task('git-checkout', ['git-submodule-update'], function () {
 gulp.task('git-commit', function () {
     //var command = 'git commit -a -m"Release version ' + version + '"';
     var command = function (cwd) {
-        gulp.src(cwd + '*')
+        gulp.src(cwd + '*.*')
             .pipe(git.commit('Release version ' + version));
     };
 
