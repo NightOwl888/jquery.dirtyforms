@@ -189,7 +189,7 @@ gulp.task('git-submodule-update', function () {
     // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
     setTimeout(function () {
         deferred.resolve();
-    }, 3000);
+    }, 4000);
 
     return deferred.promise;
 });
@@ -211,7 +211,7 @@ gulp.task('git-checkout', ['git-submodule-update'], function () {
     // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
     setTimeout(function () {
         deferred.resolve();
-    }, 3000);
+    }, 4000);
 
     return deferred.promise;
 });
@@ -238,7 +238,7 @@ gulp.task('git-commit', function () {
     // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
     setTimeout(function () {
         deferred.resolve();
-    }, 3000);
+    }, 4000);
 
     return deferred.promise;
 });
@@ -260,7 +260,7 @@ gulp.task('git-tag', ['git-commit'], function () {
     // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
     setTimeout(function () {
         deferred.resolve();
-    }, 3000);
+    }, 4000);
 
     return deferred.promise;
 });
@@ -274,7 +274,7 @@ gulp.task('git-update-submodule-final', ['git-tag'], function () {
     // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
     setTimeout(function () {
         deferred.resolve();
-    }, 3000);
+    }, 5000);
 
     return deferred.promise;
 });
@@ -305,7 +305,7 @@ gulp.task('git-push', ['git-update-submodule-final'], function () {
     // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
     setTimeout(function () {
         deferred.resolve();
-    }, 3000);
+    }, 5000);
 
     return deferred.promise;
 });
