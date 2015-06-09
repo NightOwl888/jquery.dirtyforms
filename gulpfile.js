@@ -5,6 +5,7 @@ var gulp = require('gulp'),
     jshint = require('gulp-jshint'),
     stylish = require('jshint-stylish'),
     rename = require('gulp-rename'),
+    ignore = require('gulp-ignore'),
     sourcemaps = require('gulp-sourcemaps'),
 	request = require('request'),
     fs = require('fs'),
@@ -198,9 +199,12 @@ gulp.task('git-checkout', ['git-submodule-update'], function () {
 
 gulp.task('git-commit', function () {
     //var command = 'git commit -a -m"Release version ' + version + '"';
+    //var command = function (cwd) {
+    //    gulp.src([cwd + '*.js', cwd + '*.json'])
+    //        .pipe(git.commit('Release version ' + version));
+    //};
     var command = function (cwd) {
-        gulp.src(cwd + '*.*')
-            .pipe(git.commit('Release version ' + version));
+        git.commit('Release version ' + version, { args: '-a' });
     };
 
     // Commit submodules
