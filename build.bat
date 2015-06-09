@@ -23,7 +23,7 @@ setlocal enabledelayedexpansion enableextensions
 
 REM Default values
 set version=
-IF "%PackageVersion%" == "" (
+IF NOT "%PackageVersion%" == "" (
     set version=%PackageVersion%
 )
 
@@ -44,8 +44,8 @@ FOR %%a IN (%*) DO (
 )
 
 call npm install
-if "version" == "" (
+IF "version" == "" (
 	call node_modules\.bin\gulp
-) else (
+) ELSE (
 	call node_modules\.bin\gulp release --version=%version%
 )
