@@ -236,11 +236,18 @@ gulp.task('git-push', ['git-update-submodule-final'], function () {
         });
     };
 
+    // Temporarily use test branch
+    var command2 = function (cwd) {
+        git.push('origin', 'prototype-gulp-2', { args: '--follow-tags' }, function (err) {
+            if (err) throw err;
+        });
+    };
+
     // Push submodules
     runCommandOnSubmodules(command);
 
     // Push main repo
-    command();
+    command2();
 });
 
 // Performs a release
