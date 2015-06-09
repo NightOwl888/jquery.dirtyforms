@@ -4,124 +4,138 @@ var gulp = require('gulp'),
 	out = require('gulp-out'),
     jshint = require('gulp-jshint'),
     stylish = require('jshint-stylish'),
-    concat = require('gulp-concat'),
     rename = require('gulp-rename'),
     sourcemaps = require('gulp-sourcemaps'),
 	request = require('request'),
     fs = require('fs'),
-	rimraf = require('rimraf'),
+	del = require('del'),
     bump = require('gulp-bump'),
     tap = require('gulp-tap'),
     runSequence = require('run-sequence'),
-    run = require('gulp-run');
+    run = require('gulp-run'),
+    git = require('gulp-git'),
+    glob = require('glob'),
+    path = require('path'),
+    Q = require('q');
 var args = require('yargs').argv;
-// All of the module names (individual releases) for the build
-var modules = ['jquery.dirtyforms' /*, 'jquery.dirtyforms.helpers.tinymce', 'jquery.dirtyforms.helpers.ckeditor'*/];
-var distributionFolder = './dist/jquery.dirtyforms/';
-var version = getPackageJsonVersion();
+// All of the git submodule names (individual releases) for the build
+var subModules = getSubmoduleNames();
+var distributionFolder = './dist/';
+var nugetPath = './nuget.exe';
+var version = getBuildVersion();
 
-//gulp.task('default', ['clean', 'build', 'nuget'], function() {
+console.log('subModules: ' + subModules);
 
-//});
-
-gulp.task('default', ['init', 'clean', 'build'], function () {
-
-});
-
-gulp.task('init', function () {
-    // Set the version number
-    var argsVersion = args.version;
-
-    console.log('config version: ' + version);
-    console.log('args version: ' + argsVersion);
-
-    // Override the version number with the CLI argument --version=1.2.3
-    if (typeof (argsVersion) !== 'undefined') {
-        version = argsVersion;
-    }
-
-    // Prepare the module arrays based on helpers and dialogs directories
-    var helperNames = fs.readdirSync('./helpers');
-    var names = [];
-
-    gulp.src(helperNames)
-        .pipe(rename('{basename}'))
-        .pipe(names);
-    console.log('helpers: ' + helperNames);
-    console.log('helpers: ' + names);
-});
-
-gulp.task('clean',  function(cb) {
-    rimraf(distributionFolder + '*.js', cb);
-});
-
-gulp.task('build', ['init', 'uglify'], function () {
+// Builds the distribution files and packs them with NuGet
+gulp.task('default', ['nuget'], function () {
 
 });
 
-gulp.task('uglify',  function() {
-	// Compress js
-    //gulp.src(['./jquery.dirtyforms.js'], { base: './' })
-    //    .pipe(uglify())
-    //    .pipe(out('./dist/{basename}.min{extension}'));
-    //gulp.src(['./dist/jquery.dirtyforms/jquery.dirtyforms.js'])
-    //    .pipe(uglify())
-    //    .pipe(out('{basename}.min{extension}'));
+// Cleans the distribution folders
+gulp.task('clean', function (cb) {
+    del([distributionFolder + '**/*.js', distributionFolder + '**/*.map', distributionFolder + '**/*.nupkg'], cb);
+});
 
-    //gulp.src(['./jquery.dirtyforms.js'])
-    //    .pipe(uglify())
-    //    .pipe(out('./dist/jquery.dirtyforms/{basename}.min{extension}'));
-
-    // v1.0.0
-    //gulp.src(['./jquery.dirtyforms.js'], { base: './' })
-    //    .pipe(jshint())
-    //    .pipe(jshint.reporter(stylish))
-    //    .pipe(out(distributionFolder + 'jquery.dirtyforms.js'))
-    //    .pipe(uglify())
-    //    .pipe(out(distributionFolder + '{basename}.min{extension}'));
-
-    return gulp.src(['./jquery.dirtyforms.js', './helpers/**/!(alwaysdirty).js'], { base: './' })
+// Moves the .js files to the distribution folders and creates a minified version
+gulp.task('build', ['clean'], function () {
+    return gulp.src(['./jquery.dirtyforms.js', './helpers/*.js', './dialogs/*.js'], { base: './' })
         .pipe(jshint())
         .pipe(jshint.reporter(stylish))
-        .pipe(concat('jquery.dirtyforms.js', { newLine: '\n' }))
+        .pipe(rename(function (path) {
+            var baseName = path.basename;
+            var dirName = path.dirname;
+            if (dirName == 'helpers' || dirName == 'dialogs') {
+                path.basename = 'jquery.dirtyforms.' + dirName + '.' + baseName;
+                console.log(path.basename);
+            }
+            path.dirname = path.basename;
+        }))
         .pipe(gulp.dest(distributionFolder))
         //.pipe(sourcemaps.init())
-        .pipe(rename('jquery.dirtyforms.min.js'))
-        .pipe(uglify())
+        .pipe(rename(function (path) {
+            var baseName = path.basename;
+            var dirName = path.dirname;
+            if (dirName == 'helpers' || dirName == 'dialogs') {
+                path.basename = 'jquery.dirtyforms.' + dirName + '.' + baseName;
+                console.log(path.basename);
+            }
+            path.dirname = path.basename;
+            path.extname = '.min.js';
+        }))
+        .pipe(uglify({
+            output: {
+                //comments: true
+            },
+            outSourceMap: true,
+            sourceRoot: '/'
+        }))
         //.pipe(gulp.dest(distributionFolder))
-        ////.pipe(rename('jquery.dirtyforms.min'))
-        //.pipe(sourcemaps.write('../jquery.dirtyforms'))
-        ////.pipe(sourcemaps.write('./jquery.dirtyforms.min.map'))
+        //.pipe(sourcemaps.write('.', {
+        //    includeContent: true,
+        //    sourceRoot: '/'
+        //}))
         .pipe(gulp.dest(distributionFolder));
 });
 
-gulp.task('nuget', ['download-nuget'], function() {
-	console.log('build version: ' + version);
-	console.log('nuget api key: ' + args.nugetApiKey);
-
-	// Pack NuGet file
-    //var nugetPath = './tools/nuget/nuget.exe';
-	var nugetPath = 'nuget.exe';
-
-    gulp.src('')
-        .pipe(nuget.pack({ nuspec: './jquery.dirtyforms.nuspec', nuget: nugetPath, version: version }))
-        .pipe(out('./dist/{basename}.nupkg'));
+// Runs the build, downloads the NuGet.exe file, and packs the distribution files with NuGet
+gulp.task('nuget', ['nuget-pack'], function(cb) {
+    // Clean up extra files in the main directory
+    del('./*.nupkg', cb);
 });
 
-gulp.task('download-nuget',  function() {
-	if(fs.existsSync('nuget.exe')) {
+gulp.task('nuget-pack', ['nuget-download', 'build'], function () {
+    console.log('build version: ' + version);
+    //console.log('nuget api key: ' + args.nugetApiKey);
+
+    var deferred = Q.defer();
+
+    // Get the nuspec files
+    var nuspecFiles = glob.sync("./**/*.nuspec");
+
+    console.log('Nuspec files: ' + nuspecFiles);
+
+    var nuspecLength = nuspecFiles.length;
+    for (var i = 0; i < nuspecLength; i++) {
+        var nuspecFile = nuspecFiles[i];
+        
+        // Pack NuGet file
+        gulp.src('', { base: './' })
+            .pipe(nuget.pack({ nuspec: nuspecFile, nuget: nugetPath, version: version }))
+            .pipe(rename(function (path) {
+                var baseName = path.basename;
+                var dirName = path.dirname;
+                if (dirName == 'helpers' || dirName == 'dialogs') {
+                    path.basename = 'jquery.dirtyforms.' + dirName + '.' + baseName;
+                }
+                path.dirname = path.basename;
+            }))
+            .pipe(out(distributionFolder + '{basename}.nupkg'));
+    }
+
+    // This is here to force the command to wait before returning...
+    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+    setTimeout(function () {
+        deferred.resolve();
+    }, 2000);
+
+    return deferred.promise;
+});
+
+gulp.task('nuget-download', function () {
+    if (fs.existsSync(nugetPath)) {
         done();
         return;
     }
 
     return request.get('http://nuget.org/nuget.exe')
-        .pipe(fs.createWriteStream('nuget.exe'))
+        .pipe(fs.createWriteStream(nugetPath))
         .on('close', done);
 });
 
-gulp.task('bump-version', ['init'], function () {
+gulp.task('bump-version', function () {
     var argsVersion = args.version;
     var buildType = args.buildType;
+    var preid = args.preid;
 
     console.log('build type: ' + buildType);
 
@@ -136,63 +150,171 @@ gulp.task('bump-version', ['init'], function () {
     }
     else {
         return gulp.src(['./package.json', './dist/jquery.dirtyforms/bower.json'], { base: './' })
-            .pipe(bump({ version: version }))
+            .pipe(bump({ version: version, preid: preid }))
             .pipe(gulp.dest('./'));
     }
 });
 
+// Bumps the version number.
+// CLI args:
+//   --version=1.0.0     // sets the build to a specific version number
+//   --buildType=minor   // if the version is not specified, increments the minor version and resets the patch version to 0
+//                       // allowed values: major, minor, patch
 gulp.task('bump', ['bump-version'], function () {
     console.log('Successfully bumped version to: ' + version);
 });
 
-gulp.task('git-version', function () {
-    run('git --version').exec()   
+// Writes the current version of Git to the console
+gulp.task('git-version', function (cb) {
+    run('git --version').exec(cb)   
 });
 
-gulp.task('release-prepare', function () {
-    run('git submodule init').exec();
-    run('git submodule update').exec();
+gulp.task('git-submodule-update', function () {
+    git.updateSubmodule({ args: '--init' });
 
-    var command = 'git checkout master';
+    //run('git submodule init').exec();
+    //run('git submodule update').exec();
+
+    //var command = 'git checkout master';
+
+    //// Switch to master branch in submodules (defaults to headless with no branch)
+    //runCommandOnSubmodules(command);
+
+    //// Switch to master branch in main repo (releases can only be done from this branch)
+    ////run(command).exec();
+});
+
+gulp.task('git-checkout', ['git-submodule-update'], function () {
+    var command = function (cwd) {
+        git.checkout('master');
+    };
 
     // Switch to master branch in submodules (defaults to headless with no branch)
     runCommandOnSubmodules(command);
 
     // Switch to master branch in main repo (releases can only be done from this branch)
-    //run(command).exec();
+    //command();
 });
 
 gulp.task('git-commit', function () {
-    var command = 'git commit -a -m"Release version ' + version + '"';
+    //var command = 'git commit -a -m"Release version ' + version + '"';
+    var command = function (cwd) {
+        gulp.src(cwd + '*')
+            .pipe(git.commit('Release version ' + version));
+    };
 
     // Commit submodules
     runCommandOnSubmodules(command);
 
     // Commit main repo
-    run(command).exec();
+    command('./');
 });
 
-gulp.task('git-tag'/*, ['git-commit'] */, function () {
-    var command = 'git tag ' + version + ' -m"Release version ' + version + '"';
-
+gulp.task('git-tag', ['git-commit'], function () {
+    var command = function (cwd) {
+        git.tag(version, 'Release version ' + version, { cwd: cwd });
+    };
+    
     // Tag submodules
     runCommandOnSubmodules(command);
 
     // Tag main repo
-    run(command).exec();
-
-    run('git submodule update').exec();
+    command();
 });
 
-gulp.task('git-push'/*, ['git-tag'] */, function () {
-    var command = 'git push';
+gulp.task('git-update-submodule-final', ['git-tag'], function () {
+    git.updateSubmodule();
+});
 
-    // Tag submodules
+gulp.task('git-push', ['git-update-submodule-final'], function () {
+    var command = function (cwd) {
+        git.push('origin', 'master', { args: '--follow-tags' }, function (err) {
+            if (err) throw err;
+        });
+    };
+
+    // Push submodules
     runCommandOnSubmodules(command);
 
-    // Tag main repo
-    run(command).exec();
+    // Push main repo
+    command();
 });
+
+// Performs a release
+//   1. Ensures the repository and submodules are up to date
+//   2. Bumps the version (can specify version on the CLI, for example: --version=1.0.0-alpha00003, --version=1.2.3)
+//   3. Builds the distribution files
+//   4. Packages the distribution files with NuGet
+//   5. Commits the distribution files
+//   6. Tags the repository and all submodules with the release version
+//   7. Pushes the repository and all submodules to their origin remote, including tags
+gulp.task('release', function (callback) {
+    runSequence('git-checkout',
+        'bump',
+        'nuget',
+        'git-push',
+        callback);
+});
+
+function done() { }
+
+function runCommandOnSubmodules(command) {
+    var modulesLength = subModules.length;
+    for (var i = 0; i < modulesLength; i++) {
+        var subModule = subModules[i];
+        // Pass in the working directory for the git command.
+        command(distributionFolder + subModule);
+    }
+};
+
+function getSubmoduleNames() {
+    var subModules = [];
+    var baseSubmodule = 'jquery.dirtyforms';
+    subModules.push(baseSubmodule);
+
+    //// Load helper and dialog names
+    //// http://stackoverflow.com/questions/30623886/get-an-array-of-file-names-without-extensions-from-a-directory-in-gulp/30680952#30680952
+    //glob.sync("@(helpers|dialogs)/*.js")
+    //    .forEach(function (file) {
+    //        //console.log('file: ' + file);
+    //        //console.log('file: ' + path.basename(file));
+
+    //        var dirName = path.dirname(file);
+    //        var baseName = path.basename(file, path.extname(file));
+    //        var subModule = baseSubmodule + '.' + dirName + '.' + baseName;
+    //        subModules.push(subModule);
+    //    });
+
+    return subModules;
+};
+
+function getBuildVersion() {
+    var packageVersion = getPackageJsonVersion();
+    var argsVersion = args.version;
+
+    console.log('config version: ' + packageVersion);
+    console.log('args version: ' + argsVersion);
+
+    // Override the version number with the CLI argument --version=1.2.3
+    if (typeof (argsVersion) !== 'undefined') {
+        return argsVersion;
+    }
+
+    return packageVersion;
+};
+
+function getPackageJsonVersion() {
+    //We parse the json file instead of using require because require caches multiple calls so the version number won't be updated
+    return JSON.parse(fs.readFileSync('./package.json', 'utf8')).version;
+};
+
+
+
+
+
+
+
+
 
 //gulp.task('git-push'/*, ['git-tag'] */, function () {
 //    var command = 'git push';
@@ -205,17 +327,407 @@ gulp.task('git-push'/*, ['git-tag'] */, function () {
 //});
 
 
-function done() { }
+//gulp.task('order', function (callback) {
+//    runSequence('task1',
+//        'task2',
+//        'task3',
+//        'task4',
+//        'task5',
+//        'task6',
+//        callback);
+//});
 
-function runCommandOnSubmodules(command) {
-    var modulesLength = modules.length;
-    for (var i = 0; i < modulesLength; i++) {
-        var module = modules[i];
-        run('cd dist/' + module + ' && ' + command).exec();
-    }
-};
+//gulp.task('task1', function () {
+//    console.info('task1');
+//});
 
-function getPackageJsonVersion() {
-    //We parse the json file instead of using require because require caches multiple calls so the version number won't be updated
-    return JSON.parse(fs.readFileSync('./package.json', 'utf8')).version;
-};
+//gulp.task('task2', function () {
+//    console.info('task2');
+//});
+
+//gulp.task('task3', function () {
+//    console.info('task3');
+//});
+
+//gulp.task('task4', function () {
+//    console.info('task4');
+//});
+
+//gulp.task('task5', function () {
+//    console.info('task5');
+//});
+
+//gulp.task('task6', function () {
+//    console.info('task6');
+//});
+
+
+//function clean() {
+//    rimraf(distributionFolder + '*.js');
+//}
+
+//function build() {
+//    // Compress js
+//    //gulp.src(['./jquery.dirtyforms.js'], { base: './' })
+//    //    .pipe(uglify())
+//    //    .pipe(out('./dist/{basename}.min{extension}'));
+//    //gulp.src(['./dist/jquery.dirtyforms/jquery.dirtyforms.js'])
+//    //    .pipe(uglify())
+//    //    .pipe(out('{basename}.min{extension}'));
+
+//    //gulp.src(['./jquery.dirtyforms.js'])
+//    //    .pipe(uglify())
+//    //    .pipe(out('./dist/jquery.dirtyforms/{basename}.min{extension}'));
+
+//    // v1.0.0
+//    //gulp.src(['./jquery.dirtyforms.js'], { base: './' })
+//    //    .pipe(jshint())
+//    //    .pipe(jshint.reporter(stylish))
+//    //    .pipe(out(distributionFolder + 'jquery.dirtyforms.js'))
+//    //    .pipe(uglify())
+//    //    .pipe(out(distributionFolder + '{basename}.min{extension}'));
+
+//    // TODO: Update distribution folder (s)
+
+//    return gulp.src(['./jquery.dirtyforms.js', './helpers/**/!(alwaysdirty).js'], { base: './' })
+//        .pipe(jshint())
+//        .pipe(jshint.reporter(stylish))
+//        .pipe(concat('jquery.dirtyforms.js', { newLine: '\n' }))
+//        .pipe(gulp.dest(distributionFolder))
+//        //.pipe(sourcemaps.init())
+//        .pipe(rename('jquery.dirtyforms.min.js'))
+//        .pipe(uglify())
+//        //.pipe(gulp.dest(distributionFolder))
+//        ////.pipe(rename('jquery.dirtyforms.min'))
+//        //.pipe(sourcemaps.write('../jquery.dirtyforms'))
+//        ////.pipe(sourcemaps.write('./jquery.dirtyforms.min.map'))
+//        .pipe(gulp.dest(distributionFolder));
+//};
+
+//function build() {
+//    // Compress js
+//    //gulp.src(['./jquery.dirtyforms.js'], { base: './' })
+//    //    .pipe(uglify())
+//    //    .pipe(out('./dist/{basename}.min{extension}'));
+//    //gulp.src(['./dist/jquery.dirtyforms/jquery.dirtyforms.js'])
+//    //    .pipe(uglify())
+//    //    .pipe(out('{basename}.min{extension}'));
+
+//    //gulp.src(['./jquery.dirtyforms.js'])
+//    //    .pipe(uglify())
+//    //    .pipe(out('./dist/jquery.dirtyforms/{basename}.min{extension}'));
+
+//    // v1.0.0
+//    //gulp.src(['./jquery.dirtyforms.js'], { base: './' })
+//    //    .pipe(jshint())
+//    //    .pipe(jshint.reporter(stylish))
+//    //    .pipe(out(distributionFolder + 'jquery.dirtyforms.js'))
+//    //    .pipe(uglify())
+//    //    .pipe(out(distributionFolder + '{basename}.min{extension}'));
+
+//    // TODO: Update distribution folder (s)
+
+//    //return gulp.src(['./jquery.dirtyforms.js', './helpers/**/!(alwaysdirty).js'], { base: './' })
+//    //    .pipe(jshint())
+//    //    .pipe(jshint.reporter(stylish))
+//    //    .pipe(concat('jquery.dirtyforms.js', { newLine: '\n' }))
+//    //    .pipe(gulp.dest(distributionFolder))
+//    //    //.pipe(sourcemaps.init())
+//    //    .pipe(rename('jquery.dirtyforms.min.js'))
+//    //    .pipe(uglify())
+//    //    //.pipe(gulp.dest(distributionFolder))
+//    //    ////.pipe(rename('jquery.dirtyforms.min'))
+//    //    //.pipe(sourcemaps.write('../jquery.dirtyforms'))
+//    //    ////.pipe(sourcemaps.write('./jquery.dirtyforms.min.map'))
+//    //    .pipe(gulp.dest(distributionFolder));
+
+//    //return gulp.src(['./jquery.dirtyforms.js', './helpers/*.js', './dialogs/*.js'], { base: './' })
+//    //    .pipe(jshint())
+//    //    .pipe(jshint.reporter(stylish))
+//    //    .pipe(rename(function (path) {
+//    //        path.dirname = path.basename;
+//    //    }))
+//    //    .pipe(gulp.dest(distributionFolder))
+//    //    //.pipe(sourcemaps.init())
+//    //    .pipe(rename(function (path) {
+//    //        path.dirname = path.basename;
+//    //        path.extname = '.min.js';
+//    //    }))
+//    //    .pipe(uglify({
+//    //        output: {
+//    //            comments: true
+//    //        },
+//    //        outSourceMap: true,
+//    //        sourceRoot: '/'
+//    //    }))
+//    //    //.pipe(gulp.dest(distributionFolder))
+//    //    //.pipe(sourcemaps.write('.', {
+//    //    //    includeContent: true,
+//    //    //    sourceRoot: '/'
+//    //    //}))
+//    //    .pipe(gulp.dest(distributionFolder));
+
+//        //.pipe(concat('jquery.dirtyforms.js', { newLine: '\n' }))
+//        //.pipe(gulp.dest(distributionFolder))
+//        ////.pipe(sourcemaps.init())
+//        //.pipe(rename('jquery.dirtyforms.min.js'))
+//        //.pipe(uglify())
+//        ////.pipe(gulp.dest(distributionFolder))
+//        //////.pipe(rename('jquery.dirtyforms.min'))
+//        ////.pipe(sourcemaps.write('../jquery.dirtyforms'))
+//        //////.pipe(sourcemaps.write('./jquery.dirtyforms.min.map'))
+//        //.pipe(gulp.dest(distributionFolder));
+//};
+
+//gulp.task('uglify', ['clean'], function() {
+//	// Compress js
+//    //gulp.src(['./jquery.dirtyforms.js'], { base: './' })
+//    //    .pipe(uglify())
+//    //    .pipe(out('./dist/{basename}.min{extension}'));
+//    //gulp.src(['./dist/jquery.dirtyforms/jquery.dirtyforms.js'])
+//    //    .pipe(uglify())
+//    //    .pipe(out('{basename}.min{extension}'));
+
+//    //gulp.src(['./jquery.dirtyforms.js'])
+//    //    .pipe(uglify())
+//    //    .pipe(out('./dist/jquery.dirtyforms/{basename}.min{extension}'));
+
+//    // v1.0.0
+//    //gulp.src(['./jquery.dirtyforms.js'], { base: './' })
+//    //    .pipe(jshint())
+//    //    .pipe(jshint.reporter(stylish))
+//    //    .pipe(out(distributionFolder + 'jquery.dirtyforms.js'))
+//    //    .pipe(uglify())
+//    //    .pipe(out(distributionFolder + '{basename}.min{extension}'));
+
+//    // TODO: Update distribution folder (s)
+
+//    return gulp.src(['./jquery.dirtyforms.js', './helpers/**/!(alwaysdirty).js'], { base: './' })
+//        .pipe(jshint())
+//        .pipe(jshint.reporter(stylish))
+//        .pipe(concat('jquery.dirtyforms.js', { newLine: '\n' }))
+//        .pipe(gulp.dest(distributionFolder))
+//        //.pipe(sourcemaps.init())
+//        .pipe(rename('jquery.dirtyforms.min.js'))
+//        .pipe(uglify())
+//        //.pipe(gulp.dest(distributionFolder))
+//        ////.pipe(rename('jquery.dirtyforms.min'))
+//        //.pipe(sourcemaps.write('../jquery.dirtyforms'))
+//        ////.pipe(sourcemaps.write('./jquery.dirtyforms.min.map'))
+//        .pipe(gulp.dest(distributionFolder));
+//});
+
+//gulp.task('git-tag', ['git-commit'], function () {
+//    var command = 'git tag -a ' + version + ' -m "Release version ' + version + '"';
+
+//    // Tag submodules
+//    runCommandOnSubmodules(command);
+
+//    // Tag main repo
+//    run(command).exec();
+
+//    run('git submodule update').exec();
+//});
+
+//gulp.task('git-tag'/*, ['git-commit'] */, function () {
+//    var command = function (cwd) {
+//        git.tag(version, 'Release version ' + version, { cwd: cwd });
+//    };
+
+//    //var command = 'tag -a ' + version + ' -m "Release version ' + version + '"';
+
+//    // Tag submodules
+//    //runCommandOnSubmodules(command);
+
+//    // Tag main repo
+//    //run(command).exec();
+
+//    //run('git submodule update').exec();
+
+//    //runCommandOnSubmodules(command);
+
+//    gulp.src()
+//        .pipe(runCommandOnSubmodules(command))
+//        //.pipe(command())
+//        //.pipe(git.updateSubmodule());
+
+//    //git.status();
+//});
+
+//gulp.task('git-push-commits', ['git-update-submodule-final'], function () {
+//    var command = function (cwd) {
+//        git.push('origin', 'master', function (err) {
+//            if (err) throw err;
+//        });
+//    };
+
+//    // Push submodules
+//    runCommandOnSubmodules(command);
+
+//    // Push main repo
+//    command();
+//});
+
+//gulp.task('git-push-tags', ['git-push-commits'], function () {
+//    var command = function (cwd) {
+//        git.push('origin', 'master', { args: '--tags' }, function (err) {
+//            if (err) throw err;
+//        });
+//    };
+
+//    // Push submodules
+//    runCommandOnSubmodules(command);
+
+//    // Push main repo
+//    command();
+//});
+
+//gulp.task('git-push', ['git-push-tags'], function () {
+
+//});
+
+
+//function bumpVersion() {
+//    var argsVersion = args.version;
+//    var buildType = args.buildType;
+
+//    console.log('build type: ' + buildType);
+
+//    if (typeof (argsVersion) == 'undefined') {
+//        return gulp.src(['./package.json', './dist/jquery.dirtyforms/bower.json'], { base: './' })
+//            .pipe(bump({ type: buildType }))
+//            .pipe(tap(function (file, t) {
+//                var newPkg = JSON.parse(file.contents.toString());
+//                version = newPkg.version;
+//            }))
+//            .pipe(gulp.dest('./'));
+//    }
+//    else {
+//        return gulp.src(['./package.json', './dist/jquery.dirtyforms/bower.json'], { base: './' })
+//            .pipe(bump({ version: version }))
+//            .pipe(gulp.dest('./'));
+//    }
+//};
+
+
+//function gitCheckout() {
+//    var command = function (cwd) {
+//        git.checkout('master');
+//    };
+
+//    // Switch to master branch in submodules (defaults to headless with no branch)
+//    runCommandOnSubmodules(command);
+
+//    // Switch to master branch in main repo (releases can only be done from this branch)
+//    //command();
+//};
+
+//function gitCommit() {
+//    var command = function (cwd) {
+//        gulp.src(cwd + '*')
+//            .pipe(git.commit('Release version ' + version));
+//    };
+
+//    // Commit submodules
+//    runCommandOnSubmodules(command);
+
+//    // Commit main repo
+//    command('./');
+//};
+
+//function gitTag() {
+//    var command = function (cwd) {
+//        git.tag(version, 'Release version ' + version, { cwd: cwd });
+//    };
+
+//    // Tag submodules
+//    runCommandOnSubmodules(command);
+
+//    // Tag main repo
+//    command();
+//};
+
+//function gitPushCommits() {
+//    var command = function (cwd) {
+//        git.push('origin', 'master', function (err) {
+//            if (err) throw err;
+//        });
+//    };
+
+//    // Push submodules
+//    runCommandOnSubmodules(command);
+
+//    // Push main repo
+//    command();
+//};
+
+//function gitPushTags() {
+//    var command = function (cwd) {
+//        git.push('origin', 'master', { args: '--tags' }, function (err) {
+//            if (err) throw err;
+//        });
+//    };
+
+//    // Push submodules
+//    runCommandOnSubmodules(command);
+
+//    // Push main repo
+//    command();
+//};
+
+
+
+
+
+
+////gulp.task('run-stuff', function () {
+////    task1();
+////    task2();
+////    task3();
+////});
+
+////function task1() {
+////    //var deferred = Q.defer();
+
+////    console.log('task1 start');
+
+////    //// do async stuff
+////    //setTimeout(function () {
+////    //    deferred.resolve();
+////    //}, 3000);
+
+////    console.log('task1 end');
+
+////    //return deferred.promise;
+////};
+
+////function task2() {
+////    //var deferred = Q.defer();
+
+////    console.log('task2 start');
+
+////    //// do async stuff
+////    //setTimeout(function () {
+////    //    deferred.resolve();
+////    //}, 1);
+
+////    console.log('task2 end');
+
+////    //return deferred.promise;
+////};
+
+////function task3() {
+////    //var deferred = Q.defer();
+
+////    console.log('task3 start');
+
+////    //// do async stuff
+////    //setTimeout(function () {
+////    //    deferred.resolve();
+////    //}, 1000);
+
+////    console.log('task3 end');
+
+////    //return deferred.promise;
+////};
+
