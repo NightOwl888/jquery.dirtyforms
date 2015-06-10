@@ -276,32 +276,40 @@ gulp.task('git-update-submodule-final', ['git-tag'], function (cb) {
 });
 
 gulp.task('git-push-submodule', ['git-update-submodule-final'], function (cb) {
-    var orchestrator = new Orchestrator();
-    var taskNames = [];
-    var taskRootName = 'git-push-submodule-';
-
-    var modulesLength = subModules.length;
-    for (var i = 0; i < modulesLength; i++) {
-        var subModule = subModules[i];
-        var taskName = taskRootName + subModule;
-        var cwd = distributionFolder + subModule;
-
-        orchestrator.add(taskName, function (callback) {
-            var cwd2 = cwd;
-            git.push('origin', 'master', { args: '--follow-tags', cwd: cwd2, quiet: false }, callback, function (err) {
-                if (err) throw err;
-            });
+    var command = function (cwd, callback) {
+        git.push('origin', 'master', { args: '--follow-tags', cwd: cwd, quiet: false }, callback, function (err) {
+            if (err) throw err;
         });
+    };
 
-        // Add the task name 
-        taskNames.push(taskName);
+    orchestrateSubmodules('git-push-submodule', command, cb);
+
+    //var orchestrator = new Orchestrator();
+    //var taskNames = [];
+    //var taskRootName = 'git-push-submodule-';
+
+    //var modulesLength = subModules.length;
+    //for (var i = 0; i < modulesLength; i++) {
+    //    var subModule = subModules[i];
+    //    var taskName = taskRootName + subModule;
+    //    var cwd = distributionFolder + subModule;
+
+    //    orchestrator.add(taskName, function (callback) {
+    //        var cwd2 = cwd;
+    //        git.push('origin', 'master', { args: '--follow-tags', cwd: cwd2, quiet: false }, callback, function (err) {
+    //            if (err) throw err;
+    //        });
+    //    });
+
+    //    // Add the task name 
+    //    taskNames.push(taskName);
 
 
-        // Pass in the working directory for the git command.
-        //command(distributionFolder + subModule);
-    }
+    //    // Pass in the working directory for the git command.
+    //    //command(distributionFolder + subModule);
+    //}
 
-    orchestrator.start(taskNames, cb);
+    //orchestrator.start(taskNames, cb);
 });
 
 //gulp.task('git-push-submodule', ['git-update-submodule-final'], function () {
@@ -348,6 +356,33 @@ gulp.task('release', function (callback) {
 });
 
 function done() { }
+
+function orchestrateSubmodules(taskRootName, command, cb) {
+    var orchestrator = new Orchestrator();
+    var taskNames = [];
+
+    var modulesLength = subModules.length;
+    for (var i = 0; i < modulesLength; i++) {
+        var subModule = subModules[i];
+        var taskName = taskRootName + subModule;
+        var cwd = distributionFolder + subModule;
+
+        orchestrator.add(taskName, function (callback) {
+            var cwd2 = cwd;
+            var cmd = command;
+            cmd(cwd2, callback);
+
+            //git.push('origin', 'master', { args: '--follow-tags', cwd: cwd2, quiet: false }, callback, function (err) {
+            //    if (err) throw err;
+            //});
+        });
+
+        // Add the task name 
+        taskNames.push(taskName);
+    }
+
+    orchestrator.start(taskNames, cb);
+};
 
 function runCommandOnSubmodules(command) {
     var modulesLength = subModules.length;
