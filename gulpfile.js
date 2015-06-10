@@ -339,7 +339,7 @@ function orchestrateSubmodules(taskRootName, command, cb) {
         var taskName = taskRootName + subModule;
         var cwd = distributionFolder + subModule;
 
-        orchestrator.add(taskName, commandRunner(callback, command, cwd));
+        orchestrator.add(taskName, commandRunner(command, cwd));
 
         // Add the task name 
         taskNames.push(taskName);
