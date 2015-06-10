@@ -1,7 +1,5 @@
 var gulp = require('gulp'),
-    nuget = require('gulp-nuget'),
 	uglify = require('gulp-uglify'),
-	out = require('gulp-out'),
     jshint = require('gulp-jshint'),
     stylish = require('jshint-stylish'),
     rename = require('gulp-rename'),
@@ -15,7 +13,6 @@ var gulp = require('gulp'),
     git = require('gulp-git'),
     glob = require('glob'),
     path = require('path'),
-    Q = require('q'),
     shell = require('shelljs');
 var args = require('yargs').argv;
 // All of the git submodule names (individual releases) for the build
@@ -79,16 +76,8 @@ gulp.task('build', ['clean'], function () {
 });
 
 // Runs the build, downloads the NuGet.exe file, and packs the distribution files with NuGet
-gulp.task('nuget', ['nuget-pack'], function(cb) {
-    // Clean up extra files in the main directory
-    del('./*.nupkg', cb);
-});
-
-gulp.task('nuget-pack', ['nuget-download', 'build'], function () {
+gulp.task('nuget', ['nuget-download', 'build'], function (cb) {
     console.log('build version: ' + version);
-    //console.log('nuget api key: ' + args.nugetApiKey);
-
-    var deferred = Q.defer();
 
     // Get the nuspec files
     var nuspecFiles = glob.sync("./**/*.nuspec");
@@ -98,28 +87,23 @@ gulp.task('nuget-pack', ['nuget-download', 'build'], function () {
     var nuspecLength = nuspecFiles.length;
     for (var i = 0; i < nuspecLength; i++) {
         var nuspecFile = nuspecFiles[i];
-        
+        var absoluteNugetPath = path.resolve(nugetPath);
+        var baseName = path.basename(nuspecFile, path.extname(nuspecFile));
+        var dirName = path.dirname(nuspecFile);
+
+        // Correct the file name for the plugins
+        if (dirName == 'helpers' || dirName == 'dialogs') {
+            baseName = 'jquery.dirtyforms.' + dirName + '.' + baseName;
+        }
+
         // Pack NuGet file
-        gulp.src('', { base: './' })
-            .pipe(nuget.pack({ nuspec: nuspecFile, nuget: nugetPath, version: version }))
-            .pipe(rename(function (path) {
-                var baseName = path.basename;
-                var dirName = path.dirname;
-                if (dirName == 'helpers' || dirName == 'dialogs') {
-                    path.basename = 'jquery.dirtyforms.' + dirName + '.' + baseName;
-                }
-                path.dirname = path.basename;
-            }))
-            .pipe(out(distributionFolder + '{basename}.nupkg'));
+        if (shell.exec('"' + absoluteNugetPath + '" pack "' + nuspecFile + '" -Version ' + version + ' -OutputDirectory "' + distributionFolder + '"').code != 0) {
+            shell.echo('Error: NuGet pack failed for ' + nuspecFile);
+            shell.exit(1);
+        }
     }
 
-    // This is here to force the command to wait before returning...
-    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
-    setTimeout(function () {
-        deferred.resolve();
-    }, 2000);
-
-    return deferred.promise;
+    cb();
 });
 
 gulp.task('nuget-download', function () {
@@ -205,11 +189,9 @@ gulp.task('git-submodule-checkout', ['git-submodule-update-init'], function (cb)
             shell.echo('Error: Git checkout failed for ' + cwd);
             shell.exit(1);
         }
-        else {
-            cb();
-        }
     }
 
+    cb();
 
     //var command = function (cwd, callback) {
     //    git.checkout('master', { cwd: cwd }, callback);
@@ -247,13 +229,12 @@ gulp.task('git-release-modules', function (cb) {
                         shell.echo('Error: Git push failed for ' + cwd);
                         shell.exit(1);
                     }
-                    else {
-                        cb();
-                    }
                 }
             }
         }
     }
+
+    cb();
 });
 
 gulp.task('git-add', function (cb) {
