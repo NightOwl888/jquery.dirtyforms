@@ -17,6 +17,7 @@ var gulp = require('gulp'),
     glob = require('glob'),
     path = require('path'),
     Q = require('q'),
+    shell = require('shelljs'),
     Orchestrator = require('orchestrator');
 var args = require('yargs').argv;
 // All of the git submodule names (individual releases) for the build
@@ -210,8 +211,12 @@ gulp.task('git-add', ['git-submodule-add'], function (cb) {
 
 gulp.task('git-submodule-commit', ['git-add'], function (cb) {
     var command = function (cwd, callback) {
-        return gulp.src(['./*.js', './*.json'])
-            .pipe(git.commit('Release version ' + version, { cwd: cwd }));
+        //return gulp.src(['./*.js', './*.json'])
+        //    .pipe(git.commit('Release version ' + version, { cwd: cwd }));
+        if (shell.exec('cd ' + cwd + ' && git commit -m "Release version ' + version + '"').code != 0) {
+            shell.echo('Error: Git commit failed');
+            shell.exit(1);
+        }
     };
 
     //var deferred = Q.defer();
