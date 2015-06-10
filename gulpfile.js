@@ -12,7 +12,6 @@ var gulp = require('gulp'),
     bump = require('gulp-bump'),
     tap = require('gulp-tap'),
     runSequence = require('run-sequence'),
-    run = require('gulp-run'),
     git = require('gulp-git'),
     glob = require('glob'),
     path = require('path'),
@@ -24,15 +23,8 @@ var subModules = getSubmoduleNames();
 var distributionFolder = './dist/';
 var nugetPath = './nuget.exe';
 var version = getBuildVersion();
-var currentTask;
 
 console.log('subModules: ' + subModules);
-
-gulp.Gulp.prototype.__runTask = gulp.Gulp.prototype._runTask;
-gulp.Gulp.prototype._runTask = function (task) {
-    currentTask = task;
-    this.__runTask(task);
-}
 
 
 // Builds the distribution files and packs them with NuGet
@@ -176,7 +168,13 @@ gulp.task('bump', ['bump-version'], function (cb) {
 
 // Writes the current version of Git to the console
 gulp.task('git-version', function (cb) {
-    run('git --version').exec(cb)   
+    if (shell.exec('git --version').code != 0) {
+        shell.echo('Error: Git --version failed');
+        shell.exit(1);
+    }
+    else {
+        cb();
+    }
 });
 
 gulp.task('git-submodule-update-init', function (cb) {
