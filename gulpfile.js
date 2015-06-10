@@ -171,14 +171,14 @@ gulp.task('git-version', function (cb) {
 });
 
 gulp.task('git-submodule-update', function (cb) {
-    git.updateSubmodule({ args: '--init' }, cb);
+    git.updateSubmodule({ args: '--init', cwd: './', quiet: false }, cb);
 });
 
 gulp.task('git-checkout', ['git-submodule-update'], function () {
     //var orchestrator = new Orchestrator();
 
     var command = function (cwd) {
-        git.checkout('master');
+        git.checkout('master', { cwd: cwd, quiet: false });
     };
 
     var deferred = Q.defer();
@@ -198,14 +198,9 @@ gulp.task('git-checkout', ['git-submodule-update'], function () {
     return deferred.promise;
 });
 
-gulp.task('git-commit', function () {
-    //var command = 'git commit -a -m"Release version ' + version + '"';
-    //var command = function (cwd) {
-    //    gulp.src([cwd + '*.js', cwd + '*.json'])
-    //        .pipe(git.commit('Release version ' + version));
-    //};
+gulp.task('git-commit-submodule', function () {
     var command = function (cwd) {
-        git.commit('Release version ' + version, { args: '-a' });
+        git.commit('Release version ' + version, { args: '-a', cwd: cwd, quiet: false });
     };
 
     var deferred = Q.defer();
@@ -220,14 +215,43 @@ gulp.task('git-commit', function () {
     // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
     setTimeout(function () {
         deferred.resolve();
-    }, 6000);
+    }, 7000);
 
     return deferred.promise;
 });
 
+gulp.task('git-commit', ['git-commit-submodule'], function () {
+    return git.commit('Release version ' + version, { args: '-a', cwd: './', quiet: false });
+
+    ////var command = 'git commit -a -m"Release version ' + version + '"';
+    ////var command = function (cwd) {
+    ////    gulp.src([cwd + '*.js', cwd + '*.json'])
+    ////        .pipe(git.commit('Release version ' + version));
+    ////};
+    //var command = function (cwd) {
+        
+    //};
+
+    //var deferred = Q.defer();
+
+    //// Commit submodules
+    //runCommandOnSubmodules(command);
+
+    //// Commit main repo
+    //command('./');
+
+    //// This is here to force the command to wait before returning...
+    //// Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+    //setTimeout(function () {
+    //    deferred.resolve();
+    //}, 6000);
+
+    //return deferred.promise;
+});
+
 gulp.task('git-tag', ['git-commit'], function () {
     var command = function (cwd) {
-        git.tag(version, 'Release version ' + version, { cwd: cwd });
+        git.tag(version, 'Release version ' + version, { cwd: cwd, quiet: false });
     };
 
     var deferred = Q.defer();
@@ -242,25 +266,18 @@ gulp.task('git-tag', ['git-commit'], function () {
     // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
     setTimeout(function () {
         deferred.resolve();
-    }, 6000);
+    }, 7000);
 
     return deferred.promise;
 });
 
 gulp.task('git-update-submodule-final', ['git-tag'], function (cb) {
-    git.updateSubmodule(cb);
+    git.updateSubmodule({ cwd: './', quiet: false }, cb);
 });
 
-gulp.task('git-push', ['git-update-submodule-final'], function () {
+gulp.task('git-push-submodule', ['git-update-submodule-final'], function () {
     var command = function (cwd) {
-        git.push('origin', 'master', { args: '--follow-tags' }, function (err) {
-            if (err) throw err;
-        });
-    };
-
-    // Temporarily use test branch
-    var command2 = function (cwd) {
-        git.push('origin', 'prototype-gulp-2', { args: '--follow-tags' }, function (err) {
+        git.push('origin', 'master', { args: '--follow-tags', cwd: cwd, quiet: false }, function (err) {
             if (err) throw err;
         });
     };
@@ -271,15 +288,21 @@ gulp.task('git-push', ['git-update-submodule-final'], function () {
     runCommandOnSubmodules(command);
 
     // Push main repo
-    command2();
+    command();
 
     // This is here to force the command to wait before returning...
     // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
     setTimeout(function () {
         deferred.resolve();
-    }, 5000);
+    }, 10000);
 
     return deferred.promise;
+});
+
+gulp.task('git-push', ['git-push-submodule'], function (cb) {
+    git.push('origin', 'master', { args: '--follow-tags', cwd: './', quiet: false }, cb, function (err) {
+        if (err) throw err;
+    });
 });
 
 // Performs a release
