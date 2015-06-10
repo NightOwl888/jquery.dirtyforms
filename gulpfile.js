@@ -157,23 +157,23 @@ gulp.task('git-version', function (cb) {
 });
 
 gulp.task('git-submodule-update-init', function (cb) {
-    //git.updateSubmodule({ args: '--init', cwd: './' }, cb);
+    git.updateSubmodule({ args: '--init', cwd: './' }, cb);
 
-    console.log('Initializing Git submodules...');
-    if (shell.exec('git submodule init').code != 0) {
-        shell.echo('Error: Git submodule init failed');
-        shell.exit(1);
-    }
-    else {
-        console.log('Updating Git submodules...');
-        if (shell.exec('git submodule update').code != 0) {
-            shell.echo('Error: Git submodule update failed');
-            shell.exit(1);
-        }
-        else {
-            cb();
-        }
-    }
+    //console.log('Initializing Git submodules...');
+    //if (shell.exec('git submodule init').code != 0) {
+    //    shell.echo('Error: Git submodule init failed');
+    //    shell.exit(1);
+    //}
+    //else {
+    //    console.log('Updating Git submodules...');
+    //    if (shell.exec('git submodule update').code != 0) {
+    //        shell.echo('Error: Git submodule update failed');
+    //        shell.exit(1);
+    //    }
+    //    else {
+    //        cb();
+    //    }
+    //}
 });
 
 gulp.task('git-submodule-checkout', ['git-submodule-update-init'], function (cb) {
