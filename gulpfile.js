@@ -217,6 +217,9 @@ gulp.task('git-submodule-commit', ['git-add'], function (cb) {
             shell.echo('Error: Git commit failed');
             shell.exit(1);
         }
+        else {
+            callback();
+        }
     };
 
     //var deferred = Q.defer();
