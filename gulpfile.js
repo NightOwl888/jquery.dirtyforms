@@ -17,8 +17,8 @@ var gulp = require('gulp'),
     glob = require('glob'),
     path = require('path'),
     Q = require('q'),
-    shell = require('shelljs'),
-    Orchestrator = require('orchestrator');
+    shell = require('shelljs');//,
+    //Orchestrator = require('orchestrator');
 var args = require('yargs').argv;
 // All of the git submodule names (individual releases) for the build
 var subModules = getSubmoduleNames();
@@ -181,123 +181,88 @@ gulp.task('git-version', function (cb) {
 });
 
 gulp.task('git-submodule-update-init', function (cb) {
-    git.updateSubmodule({ args: '--init', cwd: './' }, cb);
+    //git.updateSubmodule({ args: '--init', cwd: './' }, cb);
+
+    if (shell.exec('git submodule init').code != 0) {
+        shell.echo('Error: Git submodule init failed');
+        shell.exit(1);
+    }
+    else {
+        if (shell.exec('git submodule update').code != 0) {
+            shell.echo('Error: Git submodule update failed');
+            shell.exit(1);
+        }
+        else {
+            cb();
+        }
+    }
 });
 
 gulp.task('git-submodule-checkout', ['git-submodule-update-init'], function (cb) {
-    var command = function (cwd, callback) {
-        git.checkout('master', { cwd: cwd }, callback);
-    };
+    var modulesLength = subModules.length;
+    for (var i = 0; i < modulesLength; i++) {
+        var subModule = subModules[i];
+        var cwd = distributionFolder + subModule;
 
-    orchestrateSubmodules(currentTask.name, command, cb);
+        if (shell.exec('cd ' + cwd + ' && git checkout master').code != 0) {
+            shell.echo('Error: Git checkout failed for ' + cwd);
+            shell.exit(1);
+        }
+        else {
+            cb();
+        }
+    }
+
+
+    //var command = function (cwd, callback) {
+    //    git.checkout('master', { cwd: cwd }, callback);
+    //};
+
+    //orchestrateSubmodules(currentTask.name, command, cb);
 });
 
 gulp.task('git-checkout', ['git-submodule-checkout'], function (cb) {
     git.checkout('master', { cwd: './' }, cb);
 });
 
-gulp.task('git-submodule-add', function (cb) {
-    var command = function (cwd, callback) {
-        git.exec({ args: 'add -A', cwd: cwd }, callback);
-    };
+gulp.task('git-release-modules', function (cb) {
+    var modulesLength = subModules.length;
+    for (var i = 0; i < modulesLength; i++) {
+        var subModule = subModules[i];
+        var cwd = distributionFolder + subModule;
 
-    orchestrateSubmodules(currentTask.name, command, cb);
+        if (shell.exec('cd ' + cwd + ' && git commit -A -m "Release version ' + version + '"').code != 0) {
+            shell.echo('Error: Git commit failed for ' + cwd);
+            shell.exit(1);
+        }
+        else {
+            if (shell.exec('cd ' + cwd + ' && git tag ' + version + ' -m "Release version ' + version + '"').code != 0) {
+                shell.echo('Error: Git tag failed for ' + cwd);
+                shell.exit(1);
+            }
+            else {
+                if (shell.exec('cd ' + cwd + ' && git push origin master').code != 0) {
+                    shell.echo('Error: Git push failed for ' + cwd);
+                    shell.exit(1);
+                }
+                else {
+                    cb();
+                }
+            }
+        }
+    }
 });
 
 gulp.task('git-add', ['git-submodule-add'], function (cb) {
     git.exec({ args: 'add -A', cwd: './' }, cb);
 });
 
-
-gulp.task('git-submodule-commit', ['git-add'], function (cb) {
-    var command = function (cwd, callback) {
-        //return gulp.src(['./*.js', './*.json'])
-        //    .pipe(git.commit('Release version ' + version, { cwd: cwd }));
-        if (shell.exec('cd ' + cwd + ' && git commit -m "Release version ' + version + '"').code != 0) {
-            shell.echo('Error: Git commit failed');
-            shell.exit(1);
-        }
-        else {
-            callback();
-        }
-    };
-
-    //var deferred = Q.defer();
-
-    orchestrateSubmodules(currentTask.name, command, cb);
-
-    //// Commit submodules
-    //runCommandOnSubmodules(command);
-
-    //// This is here to force the command to wait before returning...
-    //// Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
-    //setTimeout(function () {
-    //    deferred.resolve();
-    //}, 10000);
-
-    //return deferred.promise;
-});
-
-gulp.task('git-commit', ['git-submodule-commit'], function () {
-    //var deferred = Q.defer();
-
+gulp.task('git-commit', ['git-add'], function () {
     return gulp.src('./*.json')
         .pipe(git.commit('Release version ' + version, { cwd: './' }));
-
-    ////var command = 'git commit -a -m"Release version ' + version + '"';
-    ////var command = function (cwd) {
-    ////    gulp.src([cwd + '*.js', cwd + '*.json'])
-    ////        .pipe(git.commit('Release version ' + version));
-    ////};
-    //var command = function (cwd) {
-
-    //};
-
-    //var deferred = Q.defer();
-
-    //// Commit submodules
-    //runCommandOnSubmodules(command);
-
-    //// Commit main repo
-    //command('./');
-
-    //// This is here to force the command to wait before returning...
-    //// Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
-    //setTimeout(function () {
-    //    deferred.resolve();
-    //}, 10000);
-
-    //return deferred.promise;
 });
 
-
-
-
-//gulp.task('git-submodule-commit', ['git-add'], function (cb) {
-//    var command = function (cwd, callback) {
-//        git.exec({ args: 'commit --message=\'Release version ' + version + '\'', cwd: cwd }, callback);
-//    };
-
-//    orchestrateSubmodules(currentTask.name, command, cb);
-//});
-
-//gulp.task('git-commit', ['git-submodule-commit'], function (cb) {
-//    git.exec({ args: 'commit --message=\'Release version ' + version + '\'', cwd: cwd }, cb);
-//});
-
-
-
-
-
-gulp.task('git-submodule-tag', ['git-commit'], function (cb) {
-    var command = function (cwd, callback) {
-        git.tag(version, 'Release version ' + version, { cwd: cwd }, callback);
-    };
-
-    orchestrateSubmodules(currentTask.name, command, cb);
-});
-
-gulp.task('git-tag', ['git-submodule-tag'], function (cb) {
+gulp.task('git-tag', ['git-commit'], function (cb) {
     git.tag(version, 'Release version ' + version, { cwd: './' }, cb);
 });
 
@@ -305,17 +270,7 @@ gulp.task('git-submodule-update', ['git-tag'], function (cb) {
     git.updateSubmodule({ cwd: './' }, cb);
 });
 
-gulp.task('git-submodule-push', ['git-submodule-update'], function (cb) {
-    var command = function (cwd, callback) {
-        git.push('origin', 'master', { args: '--follow-tags', cwd: cwd }, callback, function (err) {
-            if (err) throw err;
-        });
-    };
-
-    orchestrateSubmodules(currentTask.name, command, cb);
-});
-
-gulp.task('git-push', ['git-submodule-push'], function (cb) {
+gulp.task('git-push', ['git-submodule-update'], function (cb) {
     git.push('origin', 'master', { args: '--follow-tags', cwd: './' }, cb, function (err) {
         if (err) throw err;
     });
@@ -333,35 +288,12 @@ gulp.task('release', function (callback) {
     runSequence('git-checkout',
         'bump',
         'nuget',
+        'git-release-modules',
         'git-push',
         callback);
 });
 
 function done() { }
-
-function orchestrateSubmodules(taskRootName, command, cb) {
-    console.log('taskRootName: ' + taskRootName);
-    var orchestrator = new Orchestrator();
-    var taskNames = [];
-
-    var modulesLength = subModules.length;
-    for (var i = 0; i < modulesLength; i++) {
-        var subModule = subModules[i];
-        var taskName = taskRootName + subModule;
-        var cwd = distributionFolder + subModule;
-
-        orchestrator.add(taskName, function (callback) {
-            var _cwd = cwd;
-            var _command = command;
-            _command(cwd, callback);
-        });
-
-        // Add the task name 
-        taskNames.push(taskName);
-    }
-
-    orchestrator.start(taskNames, cb);
-};
 
 function getSubmoduleNames() {
     var subModules = [];
@@ -411,6 +343,110 @@ function getPackageJsonVersion() {
 
 
 
+
+
+//function orchestrateSubmodules(taskRootName, command, cb) {
+//    console.log('taskRootName: ' + taskRootName);
+//    var orchestrator = new Orchestrator();
+//    var taskNames = [];
+
+//    var modulesLength = subModules.length;
+//    for (var i = 0; i < modulesLength; i++) {
+//        var subModule = subModules[i];
+//        var taskName = taskRootName + subModule;
+//        var cwd = distributionFolder + subModule;
+
+//        orchestrator.add(taskName, function (callback) {
+//            var _cwd = cwd;
+//            var _command = command;
+//            _command(cwd, callback);
+//        });
+
+//        // Add the task name 
+//        taskNames.push(taskName);
+//    }
+
+//    orchestrator.start(taskNames, cb);
+//};
+
+//gulp.task('git-submodule-checkout', ['git-submodule-update-init'], function (cb) {
+//    var command = function (cwd, callback) {
+//        git.checkout('master', { cwd: cwd }, callback);
+//    };
+
+//    orchestrateSubmodules(currentTask.name, command, cb);
+//});
+
+//gulp.task('git-submodule-add', function (cb) {
+//    var command = function (cwd, callback) {
+//        git.exec({ args: 'add -A', cwd: cwd }, callback);
+//    };
+
+//    orchestrateSubmodules(currentTask.name, command, cb);
+//});
+
+//gulp.task('git-submodule-commit', ['git-add'], function (cb) {
+//    var command = function (cwd, callback) {
+//        //return gulp.src(['./*.js', './*.json'])
+//        //    .pipe(git.commit('Release version ' + version, { cwd: cwd }));
+//        if (shell.exec('cd ' + cwd + ' && git commit -m "Release version ' + version + '"').code != 0) {
+//            shell.echo('Error: Git commit failed');
+//            shell.exit(1);
+//        }
+//        else {
+//            callback();
+//        }
+//    };
+
+//    //var deferred = Q.defer();
+
+//    orchestrateSubmodules(currentTask.name, command, cb);
+
+//    //// Commit submodules
+//    //runCommandOnSubmodules(command);
+
+//    //// This is here to force the command to wait before returning...
+//    //// Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+//    //setTimeout(function () {
+//    //    deferred.resolve();
+//    //}, 10000);
+
+//    //return deferred.promise;
+//});
+
+
+
+
+
+//gulp.task('git-submodule-commit', ['git-add'], function (cb) {
+//    var command = function (cwd, callback) {
+//        git.exec({ args: 'commit --message=\'Release version ' + version + '\'', cwd: cwd }, callback);
+//    };
+
+//    orchestrateSubmodules(currentTask.name, command, cb);
+//});
+
+//gulp.task('git-commit', ['git-submodule-commit'], function (cb) {
+//    git.exec({ args: 'commit --message=\'Release version ' + version + '\'', cwd: cwd }, cb);
+//});
+
+//gulp.task('git-submodule-tag', ['git-commit'], function (cb) {
+//    var command = function (cwd, callback) {
+//        git.tag(version, 'Release version ' + version, { cwd: cwd }, callback);
+//    };
+
+//    orchestrateSubmodules(currentTask.name, command, cb);
+//});
+
+//gulp.task('git-submodule-push', ['git-submodule-update'], function (cb) {
+//    var command = function (cwd, callback) {
+//        git.push('origin', 'master', { args: '--follow-tags', cwd: cwd }, callback, function (err) {
+//            if (err) throw err;
+//        });
+//    };
+
+//    orchestrateSubmodules(currentTask.name, command, cb);
+//});
 
 
 //function runCommandOnSubmodules(command) {
