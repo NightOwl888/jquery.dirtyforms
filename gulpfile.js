@@ -89,7 +89,7 @@ gulp.task('nuget', ['nuget-download', 'build'], function (cb) {
         var nuspecFile = nuspecFiles[i];
         var absoluteNuspecFile = path.resolve(nuspecFile);
         var absoluteNugetPath = path.resolve(nugetPath);
-        var absoluteDistributionFolder = path.resolve(distributionFolder, '/');
+        var absoluteDistributionFolder = path.resolve(distributionFolder);
 
         // Pack NuGet file
         if (shell.exec('"' + absoluteNugetPath + '" pack "' + absoluteNuspecFile + '" -Version ' + version + ' -OutputDirectory "' + absoluteDistributionFolder + '"').code != 0) {
@@ -181,9 +181,9 @@ gulp.task('git-submodule-checkout', ['git-submodule-update-init'], function (cb)
     for (var i = 0; i < modulesLength; i++) {
         var subModule = subModules[i];
         var cwd = distributionFolder + subModule;
-        var absoluteWorkingPath = path.resolve(cwd, '/');
+        var absoluteWorkingPath = path.resolve(cwd);
 
-        console.log('Checking Out Git submodule ' + absoluteWorkingPath + '...');
+        console.log('Checking Out Git submodule' + absoluteWorkingPath + '...');
         if (shell.exec('cd "' + absoluteWorkingPath + '" && git checkout master').code != 0) {
             shell.echo('Error: Git checkout failed for ' + absoluteWorkingPath);
             shell.exit(1);
@@ -208,7 +208,7 @@ gulp.task('git-release-modules', function (cb) {
     for (var i = 0; i < modulesLength; i++) {
         var subModule = subModules[i];
         var cwd = distributionFolder + subModule;
-        var absoluteWorkingPath = path.resolve(cwd, '/');
+        var absoluteWorkingPath = path.resolve(cwd);
 
         console.log('Adding files to Git submodule' + absoluteWorkingPath + '...');
         if (shell.exec('cd "' + absoluteWorkingPath + '" && git add -A').code != 0) {
