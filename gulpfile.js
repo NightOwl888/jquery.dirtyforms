@@ -209,7 +209,8 @@ gulp.task('git-add', ['git-submodule-add'], function (cb) {
 
 gulp.task('git-submodule-commit', ['git-add'], function (cb) {
     var command = function (cwd, callback) {
-        git.commit('Release version ' + version, { cwd: cwd }, callback);
+        git.commit('Release version ' + version, { cwd: cwd });
+        callback();
     };
 
     orchestrateSubmodules(currentTask.name, command, cb);
@@ -229,7 +230,7 @@ gulp.task('git-submodule-commit', ['git-add'], function (cb) {
 });
 
 gulp.task('git-commit', ['git-submodule-commit'], function (cb) {
-    //var deferred = Q.defer();
+    var deferred = Q.defer();
 
     git.commit('Release version ' + version, { cwd: './' }, cb);
 
@@ -250,13 +251,13 @@ gulp.task('git-commit', ['git-submodule-commit'], function (cb) {
     //// Commit main repo
     //command('./');
 
-    //// This is here to force the command to wait before returning...
-    //// Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
-    //setTimeout(function () {
-    //    deferred.resolve();
-    //}, 10000);
+    // This is here to force the command to wait before returning...
+    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+    setTimeout(function () {
+        deferred.resolve();
+    }, 10000);
 
-    //return deferred.promise;
+    return deferred.promise;
 });
 
 
