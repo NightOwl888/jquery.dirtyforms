@@ -179,11 +179,11 @@ gulp.task('git-version', function (cb) {
     run('git --version').exec(cb)   
 });
 
-gulp.task('git-update-submodule', function (cb) {
+gulp.task('git-submodule-update-init', function (cb) {
     git.updateSubmodule({ args: '--init', cwd: './' }, cb);
 });
 
-gulp.task('git-checkout-submodule', ['git-update-submodule'], function (cb) {
+gulp.task('git-submodule-checkout', ['git-submodule-update-init'], function (cb) {
     var command = function (cwd, callback) {
         git.checkout('master', { cwd: cwd }, callback);
     };
@@ -191,11 +191,11 @@ gulp.task('git-checkout-submodule', ['git-update-submodule'], function (cb) {
     orchestrateSubmodules(currentTask.name, command, cb);
 });
 
-gulp.task('git-checkout', ['git-checkout-submodule'], function (cb) {
-    git.checkout('master', { cwd: cwd }, cb);
+gulp.task('git-checkout', ['git-submodule-checkout'], function (cb) {
+    git.checkout('master', { cwd: './' }, cb);
 });
 
-gulp.task('git-add-submodule', function (cb) {
+gulp.task('git-submodule-add', function (cb) {
     var command = function (cwd, callback) {
         git.exec({ args: 'add -A', cwd: cwd }, callback);
     };
@@ -203,11 +203,11 @@ gulp.task('git-add-submodule', function (cb) {
     orchestrateSubmodules(currentTask.name, command, cb);
 });
 
-gulp.task('git-add', ['git-add-submodule'], function (cb) {
-    git.exec({ args: 'add -A', cwd: cwd }, cb);
+gulp.task('git-add', ['git-submodule-add'], function (cb) {
+    git.exec({ args: 'add -A', cwd: './' }, cb);
 });
 
-gulp.task('git-commit-submodule', function (cb) {
+gulp.task('git-submodule-commit', function (cb) {
     var command = function (cwd, callback) {
         git.exec({ args: 'commit -m "Release version ' + version + '"', cwd: cwd }, callback);
     };
@@ -215,11 +215,11 @@ gulp.task('git-commit-submodule', function (cb) {
     orchestrateSubmodules(currentTask.name, command, cb);
 });
 
-gulp.task('git-commit', ['git-commit-submodule'], function (cb) {
+gulp.task('git-commit', ['git-submodule-commit'], function (cb) {
     git.exec({ args: 'commit -m "Release version ' + version + '"', cwd: cwd }, cb);
 });
 
-gulp.task('git-tag-submodule', ['git-commit'], function (cb) {
+gulp.task('git-submodule-tag', ['git-commit'], function (cb) {
     var command = function (cwd, callback) {
         git.tag(version, 'Release version ' + version, { cwd: cwd }, callback);
     };
@@ -227,15 +227,15 @@ gulp.task('git-tag-submodule', ['git-commit'], function (cb) {
     orchestrateSubmodules(currentTask.name, command, cb);
 });
 
-gulp.task('git-tag', ['git-commit'], function (cb) {
+gulp.task('git-tag', ['git-submodule-tag'], function (cb) {
     git.tag(version, 'Release version ' + version, { cwd: './' }, cb);
 });
 
-gulp.task('git-update-submodule-final', ['git-tag'], function (cb) {
+gulp.task('git-submodule-update', ['git-tag'], function (cb) {
     git.updateSubmodule({ cwd: './' }, cb);
 });
 
-gulp.task('git-push-submodule', ['git-update-submodule-final'], function (cb) {
+gulp.task('git-submodule-push', ['git-submodule-update'], function (cb) {
     var command = function (cwd, callback) {
         git.push('origin', 'master', { args: '--follow-tags', cwd: cwd }, callback, function (err) {
             if (err) throw err;
@@ -245,7 +245,7 @@ gulp.task('git-push-submodule', ['git-update-submodule-final'], function (cb) {
     orchestrateSubmodules(currentTask.name, command, cb);
 });
 
-gulp.task('git-push', ['git-push-submodule'], function (cb) {
+gulp.task('git-push', ['git-submodule-push'], function (cb) {
     git.push('origin', 'master', { args: '--follow-tags', cwd: './' }, cb, function (err) {
         if (err) throw err;
     });
