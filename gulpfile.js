@@ -24,8 +24,16 @@ var subModules = getSubmoduleNames();
 var distributionFolder = './dist/';
 var nugetPath = './nuget.exe';
 var version = getBuildVersion();
+var currentTask;
 
 console.log('subModules: ' + subModules);
+
+gulp.Gulp.prototype.__runTask = gulp.Gulp.prototype._runTask;
+gulp.Gulp.prototype._runTask = function (task) {
+    currentTask = task;
+    this.__runTask(task);
+}
+
 
 // Builds the distribution files and packs them with NuGet
 gulp.task('default', ['nuget'], function () {
@@ -171,170 +179,74 @@ gulp.task('git-version', function (cb) {
     run('git --version').exec(cb)   
 });
 
-gulp.task('git-submodule-update', function (cb) {
-    git.updateSubmodule({ args: '--init', cwd: './', quiet: false }, cb);
+gulp.task('git-update-submodule', function (cb) {
+    git.updateSubmodule({ args: '--init', cwd: './' }, cb);
 });
 
-gulp.task('git-checkout', ['git-submodule-update'], function () {
-    //var orchestrator = new Orchestrator();
-
-    var command = function (cwd) {
-        git.checkout('master', { cwd: cwd, quiet: false });
+gulp.task('git-checkout-submodule', ['git-update-submodule'], function (cb) {
+    var command = function (cwd, callback) {
+        git.checkout('master', { cwd: cwd }, callback);
     };
 
-    var deferred = Q.defer();
-
-    // Switch to master branch in submodules (defaults to headless with no branch)
-    runCommandOnSubmodules(command);
-
-    // Switch to master branch in main repo (releases can only be done from this branch)
-    //command();
-
-    // This is here to force the command to wait before returning...
-    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
-    setTimeout(function () {
-        deferred.resolve();
-    }, 6000);
-
-    return deferred.promise;
+    orchestrateSubmodules(currentTask.name, command, cb);
 });
 
-gulp.task('git-commit-submodule', function () {
-    var command = function (cwd) {
-        git.commit('Release version ' + version, { args: '-a', cwd: cwd, quiet: false });
+gulp.task('git-checkout', ['git-checkout-submodule'], function (cb) {
+    git.checkout('master', { cwd: cwd }, cb);
+});
+
+gulp.task('git-add-submodule', function (cb) {
+    var command = function (cwd, callback) {
+        git.exec({ args: 'add -A', cwd: cwd }, callback);
     };
 
-    var deferred = Q.defer();
-
-    // Commit submodules
-    runCommandOnSubmodules(command);
-
-    // This is here to force the command to wait before returning...
-    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
-    setTimeout(function () {
-        deferred.resolve();
-    }, 10000);
-
-    return deferred.promise;
+    orchestrateSubmodules(currentTask.name, command, cb);
 });
 
-gulp.task('git-commit', ['git-commit-submodule'], function () {
-    var deferred = Q.defer();
-
-    git.commit('Release version ' + version, { args: '-a', cwd: './', quiet: false });
-
-    ////var command = 'git commit -a -m"Release version ' + version + '"';
-    ////var command = function (cwd) {
-    ////    gulp.src([cwd + '*.js', cwd + '*.json'])
-    ////        .pipe(git.commit('Release version ' + version));
-    ////};
-    //var command = function (cwd) {
-        
-    //};
-
-    //var deferred = Q.defer();
-
-    //// Commit submodules
-    //runCommandOnSubmodules(command);
-
-    //// Commit main repo
-    //command('./');
-
-    // This is here to force the command to wait before returning...
-    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
-    setTimeout(function () {
-        deferred.resolve();
-    }, 10000);
-
-    return deferred.promise;
+gulp.task('git-add', ['git-add-submodule'], function (cb) {
+    git.exec({ args: 'add -A', cwd: cwd }, cb);
 });
 
-gulp.task('git-tag', ['git-commit'], function () {
-    var command = function (cwd) {
-        git.tag(version, 'Release version ' + version, { cwd: cwd, quiet: false });
+gulp.task('git-commit-submodule', function (cb) {
+    var command = function (cwd, callback) {
+        git.exec({ args: 'commit -m "Release version ' + version + '"', cwd: cwd }, callback);
     };
 
-    var deferred = Q.defer();
-    
-    // Tag submodules
-    runCommandOnSubmodules(command);
+    orchestrateSubmodules(currentTask.name, command, cb);
+});
 
-    // Tag main repo
-    command();
+gulp.task('git-commit', ['git-commit-submodule'], function (cb) {
+    git.exec({ args: 'commit -m "Release version ' + version + '"', cwd: cwd }, cb);
+});
 
-    // This is here to force the command to wait before returning...
-    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
-    setTimeout(function () {
-        deferred.resolve();
-    }, 7000);
+gulp.task('git-tag-submodule', ['git-commit'], function (cb) {
+    var command = function (cwd, callback) {
+        git.tag(version, 'Release version ' + version, { cwd: cwd }, callback);
+    };
 
-    return deferred.promise;
+    orchestrateSubmodules(currentTask.name, command, cb);
+});
+
+gulp.task('git-tag', ['git-commit'], function (cb) {
+    git.tag(version, 'Release version ' + version, { cwd: './' }, cb);
 });
 
 gulp.task('git-update-submodule-final', ['git-tag'], function (cb) {
-    git.updateSubmodule({ cwd: './', quiet: false }, cb);
+    git.updateSubmodule({ cwd: './' }, cb);
 });
 
 gulp.task('git-push-submodule', ['git-update-submodule-final'], function (cb) {
     var command = function (cwd, callback) {
-        git.push('origin', 'master', { args: '--follow-tags', cwd: cwd, quiet: false }, callback, function (err) {
+        git.push('origin', 'master', { args: '--follow-tags', cwd: cwd }, callback, function (err) {
             if (err) throw err;
         });
     };
 
-    orchestrateSubmodules('git-push-submodule', command, cb);
-
-    //var orchestrator = new Orchestrator();
-    //var taskNames = [];
-    //var taskRootName = 'git-push-submodule-';
-
-    //var modulesLength = subModules.length;
-    //for (var i = 0; i < modulesLength; i++) {
-    //    var subModule = subModules[i];
-    //    var taskName = taskRootName + subModule;
-    //    var cwd = distributionFolder + subModule;
-
-    //    orchestrator.add(taskName, function (callback) {
-    //        var cwd2 = cwd;
-    //        git.push('origin', 'master', { args: '--follow-tags', cwd: cwd2, quiet: false }, callback, function (err) {
-    //            if (err) throw err;
-    //        });
-    //    });
-
-    //    // Add the task name 
-    //    taskNames.push(taskName);
-
-
-    //    // Pass in the working directory for the git command.
-    //    //command(distributionFolder + subModule);
-    //}
-
-    //orchestrator.start(taskNames, cb);
+    orchestrateSubmodules(currentTask.name, command, cb);
 });
 
-//gulp.task('git-push-submodule', ['git-update-submodule-final'], function () {
-//    var command = function (cwd) {
-//        git.push('origin', 'master', { args: '--follow-tags', cwd: cwd, quiet: false }, function (err) {
-//            if (err) throw err;
-//        });
-//    };
-
-//    var deferred = Q.defer();
-
-//    // Push submodules
-//    runCommandOnSubmodules(command);
-
-//    // This is here to force the command to wait before returning...
-//    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
-//    setTimeout(function () {
-//        deferred.resolve();
-//    }, 10000);
-
-//    return deferred.promise;
-//});
-
 gulp.task('git-push', ['git-push-submodule'], function (cb) {
-    git.push('origin', 'master', { args: '--follow-tags', cwd: './', quiet: false }, cb, function (err) {
+    git.push('origin', 'master', { args: '--follow-tags', cwd: './' }, cb, function (err) {
         if (err) throw err;
     });
 });
@@ -371,10 +283,6 @@ function orchestrateSubmodules(taskRootName, command, cb) {
             var cwd2 = cwd;
             var cmd = command;
             cmd(cwd2, callback);
-
-            //git.push('origin', 'master', { args: '--follow-tags', cwd: cwd2, quiet: false }, callback, function (err) {
-            //    if (err) throw err;
-            //});
         });
 
         // Add the task name 
@@ -382,15 +290,6 @@ function orchestrateSubmodules(taskRootName, command, cb) {
     }
 
     orchestrator.start(taskNames, cb);
-};
-
-function runCommandOnSubmodules(command) {
-    var modulesLength = subModules.length;
-    for (var i = 0; i < modulesLength; i++) {
-        var subModule = subModules[i];
-        // Pass in the working directory for the git command.
-        command(distributionFolder + subModule);
-    }
 };
 
 function getSubmoduleNames() {
@@ -441,6 +340,16 @@ function getPackageJsonVersion() {
 
 
 
+
+
+//function runCommandOnSubmodules(command) {
+//    var modulesLength = subModules.length;
+//    for (var i = 0; i < modulesLength; i++) {
+//        var subModule = subModules[i];
+//        // Pass in the working directory for the git command.
+//        command(distributionFolder + subModule);
+//    }
+//};
 
 //gulp.task('git-push'/*, ['git-tag'] */, function () {
 //    var command = 'git push';
@@ -997,3 +906,58 @@ function getPackageJsonVersion() {
 
 //    return deferred.promise;
 //});
+
+//gulp.task('nuget-pack', ['nuget-download', 'build'], function () {
+//    console.log('build version: ' + version);
+//    //console.log('nuget api key: ' + args.nugetApiKey);
+
+//    var deferred = Q.defer();
+
+//    var taskRootName = currentTask.name;
+//    var orchestrator = new Orchestrator();
+//    var taskNames = [];
+
+//    // Get the nuspec files
+//    var nuspecFiles = glob.sync("./**/*.nuspec");
+
+//    console.log('Nuspec files: ' + nuspecFiles);
+
+//    var nuspecLength = nuspecFiles.length;
+//    for (var i = 0; i < nuspecLength; i++) {
+//        var nuspecFile = nuspecFiles[i];
+//        var taskName = taskRootName + nuspecFile;
+//        var cwd = distributionFolder + nuspecFile;
+
+
+//        orchestrator.add(taskName, function () {
+//            return nugetPack(nuspecFile, nugetPath, version)
+//        });
+
+//        taskNames.push(taskName);
+//    }
+
+//    orchestrator.start(taskNames);
+
+//    // This is here to force the command to wait before returning...
+//    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+//    setTimeout(function () {
+//        deferred.resolve();
+//    }, 2000);
+
+//    return deferred.promise;
+//});
+
+//function nugetPack(nuspecFile, nugetPath, version) {
+//    // Pack NuGet file
+//    return gulp.src('', { base: './' })
+//        .pipe(nuget.pack({ nuspec: nuspecFile, nuget: nugetPath, version: version }))
+//        .pipe(rename(function (path) {
+//            var baseName = path.basename;
+//            var dirName = path.dirname;
+//            if (dirName == 'helpers' || dirName == 'dialogs') {
+//                path.basename = 'jquery.dirtyforms.' + dirName + '.' + baseName;
+//            }
+//            path.dirname = path.basename;
+//        }))
+//        .pipe(out(distributionFolder + '{basename}.nupkg'));
+//};
