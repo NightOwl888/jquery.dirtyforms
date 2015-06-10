@@ -17,8 +17,7 @@ var gulp = require('gulp'),
     glob = require('glob'),
     path = require('path'),
     Q = require('q'),
-    shell = require('shelljs');//,
-    //Orchestrator = require('orchestrator');
+    shell = require('shelljs');
 var args = require('yargs').argv;
 // All of the git submodule names (individual releases) for the build
 var subModules = getSubmoduleNames();
@@ -231,22 +230,28 @@ gulp.task('git-release-modules', function (cb) {
         var subModule = subModules[i];
         var cwd = distributionFolder + subModule;
 
-        if (shell.exec('cd ' + cwd + ' && git commit -A -m "Release version ' + version + '"').code != 0) {
-            shell.echo('Error: Git commit failed for ' + cwd);
+        if (shell.exec('cd ' + cwd + ' && git add -A').code != 0) {
+            shell.echo('Error: Git add failed for ' + cwd);
             shell.exit(1);
         }
         else {
-            if (shell.exec('cd ' + cwd + ' && git tag ' + version + ' -m "Release version ' + version + '"').code != 0) {
-                shell.echo('Error: Git tag failed for ' + cwd);
+            if (shell.exec('cd ' + cwd + ' && git commit -m "Release version ' + version + '"').code != 0) {
+                shell.echo('Error: Git commit failed for ' + cwd);
                 shell.exit(1);
             }
             else {
-                if (shell.exec('cd ' + cwd + ' && git push origin master').code != 0) {
-                    shell.echo('Error: Git push failed for ' + cwd);
+                if (shell.exec('cd ' + cwd + ' && git tag ' + version + ' -m "Release version ' + version + '"').code != 0) {
+                    shell.echo('Error: Git tag failed for ' + cwd);
                     shell.exit(1);
                 }
                 else {
-                    cb();
+                    if (shell.exec('cd ' + cwd + ' && git push origin master').code != 0) {
+                        shell.echo('Error: Git push failed for ' + cwd);
+                        shell.exit(1);
+                    }
+                    else {
+                        cb();
+                    }
                 }
             }
         }
