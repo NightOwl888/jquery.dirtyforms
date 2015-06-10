@@ -87,18 +87,13 @@ gulp.task('nuget', ['nuget-download', 'build'], function (cb) {
     var nuspecLength = nuspecFiles.length;
     for (var i = 0; i < nuspecLength; i++) {
         var nuspecFile = nuspecFiles[i];
+        var absoluteNuspecFile = path.resolve(nuspecFile);
         var absoluteNugetPath = path.resolve(nugetPath);
-        var baseName = path.basename(nuspecFile, path.extname(nuspecFile));
-        var dirName = path.dirname(nuspecFile);
-
-        // Correct the file name for the plugins
-        if (dirName == 'helpers' || dirName == 'dialogs') {
-            baseName = 'jquery.dirtyforms.' + dirName + '.' + baseName;
-        }
+        var absoluteDistributionFolder = path.resolve(distributionFolder);
 
         // Pack NuGet file
-        if (shell.exec('"' + absoluteNugetPath + '" pack "' + nuspecFile + '" -Version ' + version + ' -OutputDirectory "' + distributionFolder + '"').code != 0) {
-            shell.echo('Error: NuGet pack failed for ' + nuspecFile);
+        if (shell.exec('"' + absoluteNugetPath + '" pack "' + absoluteNuspecFile + '" -Version ' + version + ' -OutputDirectory "' + absoluteDistributionFolder + '"').code != 0) {
+            shell.echo('Error: NuGet pack failed for ' + absoluteNuspecFile);
             shell.exit(1);
         }
     }
@@ -184,9 +179,10 @@ gulp.task('git-submodule-checkout', ['git-submodule-update-init'], function (cb)
     for (var i = 0; i < modulesLength; i++) {
         var subModule = subModules[i];
         var cwd = distributionFolder + subModule;
+        var absoluteWorkingPath = path.resolve(cwd);
 
-        if (shell.exec('cd ' + cwd + ' && git checkout master').code != 0) {
-            shell.echo('Error: Git checkout failed for ' + cwd);
+        if (shell.exec('cd "' + absoluteWorkingPath + '" && git checkout master').code != 0) {
+            shell.echo('Error: Git checkout failed for ' + absoluteWorkingPath);
             shell.exit(1);
         }
     }
@@ -209,24 +205,25 @@ gulp.task('git-release-modules', function (cb) {
     for (var i = 0; i < modulesLength; i++) {
         var subModule = subModules[i];
         var cwd = distributionFolder + subModule;
+        var absoluteWorkingPath = path.resolve(cwd);
 
-        if (shell.exec('cd ' + cwd + ' && git add -A').code != 0) {
-            shell.echo('Error: Git add failed for ' + cwd);
+        if (shell.exec('cd "' + absoluteWorkingPath + '" && git add -A').code != 0) {
+            shell.echo('Error: Git add failed for ' + absoluteWorkingPath);
             shell.exit(1);
         }
         else {
-            if (shell.exec('cd ' + cwd + ' && git commit -m "Release version ' + version + '"').code != 0) {
-                shell.echo('Error: Git commit failed for ' + cwd);
+            if (shell.exec('cd "' + absoluteWorkingPath + '" && git commit -m "Release version ' + version + '"').code != 0) {
+                shell.echo('Error: Git commit failed for ' + absoluteWorkingPath);
                 shell.exit(1);
             }
             else {
-                if (shell.exec('cd ' + cwd + ' && git tag ' + version + ' -m "Release version ' + version + '"').code != 0) {
-                    shell.echo('Error: Git tag failed for ' + cwd);
+                if (shell.exec('cd "' + absoluteWorkingPath + '" && git tag ' + version + ' -m "Release version ' + version + '"').code != 0) {
+                    shell.echo('Error: Git tag failed for ' + absoluteWorkingPath);
                     shell.exit(1);
                 }
                 else {
-                    if (shell.exec('cd ' + cwd + ' && git push origin master').code != 0) {
-                        shell.echo('Error: Git push failed for ' + cwd);
+                    if (shell.exec('cd "' + absoluteWorkingPath + '" && git push origin master').code != 0) {
+                        shell.echo('Error: Git push failed for ' + absoluteWorkingPath);
                         shell.exit(1);
                     }
                 }
