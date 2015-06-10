@@ -208,9 +208,6 @@ gulp.task('git-commit-submodule', function () {
     // Commit submodules
     runCommandOnSubmodules(command);
 
-    // Commit main repo
-    command('./');
-
     // This is here to force the command to wait before returning...
     // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
     setTimeout(function () {
@@ -221,7 +218,9 @@ gulp.task('git-commit-submodule', function () {
 });
 
 gulp.task('git-commit', ['git-commit-submodule'], function () {
-    return git.commit('Release version ' + version, { args: '-a', cwd: './', quiet: false });
+    var deferred = Q.defer();
+
+    git.commit('Release version ' + version, { args: '-a', cwd: './', quiet: false });
 
     ////var command = 'git commit -a -m"Release version ' + version + '"';
     ////var command = function (cwd) {
@@ -240,13 +239,13 @@ gulp.task('git-commit', ['git-commit-submodule'], function () {
     //// Commit main repo
     //command('./');
 
-    //// This is here to force the command to wait before returning...
-    //// Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
-    //setTimeout(function () {
-    //    deferred.resolve();
-    //}, 6000);
+    // This is here to force the command to wait before returning...
+    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+    setTimeout(function () {
+        deferred.resolve();
+    }, 7000);
 
-    //return deferred.promise;
+    return deferred.promise;
 });
 
 gulp.task('git-tag', ['git-commit'], function () {
@@ -286,9 +285,6 @@ gulp.task('git-push-submodule', ['git-update-submodule-final'], function () {
 
     // Push submodules
     runCommandOnSubmodules(command);
-
-    // Push main repo
-    command();
 
     // This is here to force the command to wait before returning...
     // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
