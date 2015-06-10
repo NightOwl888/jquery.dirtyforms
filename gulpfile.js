@@ -207,31 +207,34 @@ gulp.task('git-add', ['git-submodule-add'], function (cb) {
     git.exec({ args: 'add -A', cwd: './' }, cb);
 });
 
-gulp.task('git-submodule-commit', ['git-add'], function () {
+
+gulp.task('git-submodule-commit', ['git-add'], function (cb) {
     var command = function (cwd, callback) {
-        git.commit('Release version ' + version, { cwd: cwd });
+        return gulp.src(['./*.js', './*.json'])
+            .pipe(git.commit('Release version ' + version, { cwd: cwd }));
     };
 
-    var deferred = Q.defer();
+    //var deferred = Q.defer();
 
-    orchestrateSubmodules(currentTask.name, command, done);
+    orchestrateSubmodules(currentTask.name, command, cb);
 
     //// Commit submodules
     //runCommandOnSubmodules(command);
 
-    // This is here to force the command to wait before returning...
-    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
-    setTimeout(function () {
-        deferred.resolve();
-    }, 10000);
+    //// This is here to force the command to wait before returning...
+    //// Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+    //setTimeout(function () {
+    //    deferred.resolve();
+    //}, 10000);
 
-    return deferred.promise;
+    //return deferred.promise;
 });
 
 gulp.task('git-commit', ['git-submodule-commit'], function () {
-    var deferred = Q.defer();
+    //var deferred = Q.defer();
 
-    git.commit('Release version ' + version, { cwd: './' });
+    return gulp.src('./*.json')
+        .pipe(git.commit('Release version ' + version, { cwd: './' }));
 
     ////var command = 'git commit -a -m"Release version ' + version + '"';
     ////var command = function (cwd) {
@@ -250,13 +253,13 @@ gulp.task('git-commit', ['git-submodule-commit'], function () {
     //// Commit main repo
     //command('./');
 
-    // This is here to force the command to wait before returning...
-    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
-    setTimeout(function () {
-        deferred.resolve();
-    }, 10000);
+    //// This is here to force the command to wait before returning...
+    //// Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+    //setTimeout(function () {
+    //    deferred.resolve();
+    //}, 10000);
 
-    return deferred.promise;
+    //return deferred.promise;
 });
 
 
