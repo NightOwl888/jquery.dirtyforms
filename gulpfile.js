@@ -183,9 +183,20 @@ gulp.task('git-submodule-checkout', ['git-submodule-update-init'], function (cb)
         var cwd = distributionFolder + subModule;
         var absoluteWorkingPath = path.resolve(cwd);
 
-        console.log('Checking Out Git submodule' + absoluteWorkingPath + '...');
-        if (shell.exec('cd "' + absoluteWorkingPath + '" && git checkout master').code != 0) {
-            shell.echo('Error: Git checkout failed for ' + absoluteWorkingPath);
+        if (shell.cd('"' + absoluteWorkingPath + '"').code != 0) {
+            shell.echo('Error: Change directory failed for ' + absoluteWorkingPath);
+            shell.exit(1);
+        }
+        else {
+            console.log('Checking Out Git submodule ' + absoluteWorkingPath + '...');
+            if (shell.exec('git checkout master').code != 0) {
+                shell.echo('Error: Git checkout failed for ' + absoluteWorkingPath);
+                shell.exit(1);
+            }
+        }
+
+        if (shell.cd('"../.."').code != 0) {
+            shell.echo('Error: Change directory failed to return to base directory.');
             shell.exit(1);
         }
     }
@@ -210,32 +221,44 @@ gulp.task('git-release-modules', function (cb) {
         var cwd = distributionFolder + subModule;
         var absoluteWorkingPath = path.resolve(cwd);
 
-        console.log('Adding files to Git submodule' + absoluteWorkingPath + '...');
-        if (shell.exec('cd "' + absoluteWorkingPath + '" && git add -A').code != 0) {
-            shell.echo('Error: Git add failed for ' + absoluteWorkingPath);
+        console.log('Changing directory to ' + absoluteWorkingPath + '...');
+        if (shell.cd('"' + absoluteWorkingPath + '"').code != 0) {
+            shell.echo('Error: Change directory failed for ' + absoluteWorkingPath);
             shell.exit(1);
         }
         else {
-            console.log('Committing files to Git submodule' + absoluteWorkingPath + '...');
-            if (shell.exec('cd "' + absoluteWorkingPath + '" && git commit -m "Release version ' + version + '"').code != 0) {
-                shell.echo('Error: Git commit failed for ' + absoluteWorkingPath);
+            console.log('Adding files to Git submodule' + absoluteWorkingPath + '...');
+            if (shell.exec('cd "' + absoluteWorkingPath + '" && git add -A').code != 0) {
+                shell.echo('Error: Git add failed for ' + absoluteWorkingPath);
                 shell.exit(1);
             }
             else {
-                console.log('Tagging Git submodule' + absoluteWorkingPath + '...');
-                if (shell.exec('cd "' + absoluteWorkingPath + '" && git tag ' + version + ' -m "Release version ' + version + '"').code != 0) {
-                    shell.echo('Error: Git tag failed for ' + absoluteWorkingPath);
+                console.log('Committing files to Git submodule' + absoluteWorkingPath + '...');
+                if (shell.exec('cd "' + absoluteWorkingPath + '" && git commit -m "Release version ' + version + '"').code != 0) {
+                    shell.echo('Error: Git commit failed for ' + absoluteWorkingPath);
                     shell.exit(1);
                 }
                 else {
-                    console.log('Pushing Git submodule' + absoluteWorkingPath + '...');
-                    if (shell.exec('cd "' + absoluteWorkingPath + '" && git push origin master').code != 0) {
-                        shell.echo('Error: Git push failed for ' + absoluteWorkingPath);
+                    console.log('Tagging Git submodule' + absoluteWorkingPath + '...');
+                    if (shell.exec('cd "' + absoluteWorkingPath + '" && git tag ' + version + ' -m "Release version ' + version + '"').code != 0) {
+                        shell.echo('Error: Git tag failed for ' + absoluteWorkingPath);
                         shell.exit(1);
+                    }
+                    else {
+                        console.log('Pushing Git submodule' + absoluteWorkingPath + '...');
+                        if (shell.exec('cd "' + absoluteWorkingPath + '" && git push origin master').code != 0) {
+                            shell.echo('Error: Git push failed for ' + absoluteWorkingPath);
+                            shell.exit(1);
+                        }
                     }
                 }
             }
         }
+    }
+
+    if (shell.cd('"../.."').code != 0) {
+        shell.echo('Error: Change directory failed to return to base directory.');
+        shell.exit(1);
     }
 
     cb();
