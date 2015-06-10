@@ -210,12 +210,11 @@ gulp.task('git-add', ['git-submodule-add'], function (cb) {
 gulp.task('git-submodule-commit', ['git-add'], function () {
     var command = function (cwd, callback) {
         git.commit('Release version ' + version, { cwd: cwd });
-        callback();
     };
 
     var deferred = Q.defer();
 
-    orchestrateSubmodules(currentTask.name, command);
+    orchestrateSubmodules(currentTask.name, command, done);
 
     //// Commit submodules
     //runCommandOnSubmodules(command);
