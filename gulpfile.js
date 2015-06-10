@@ -207,7 +207,7 @@ gulp.task('git-add', ['git-submodule-add'], function (cb) {
     git.exec({ args: 'add -A', cwd: './' }, cb);
 });
 
-gulp.task('git-submodule-commit', function (cb) {
+gulp.task('git-submodule-commit', ['git-add'], function (cb) {
     var command = function (cwd, callback) {
         git.exec({ args: 'commit -m \'Release version ' + version + '\'', cwd: cwd }, callback);
     };
