@@ -161,8 +161,9 @@ gulp.task('bump-version', function () {
 //   --version=1.0.0     // sets the build to a specific version number
 //   --buildType=minor   // if the version is not specified, increments the minor version and resets the patch version to 0
 //                       // allowed values: major, minor, patch
-gulp.task('bump', ['bump-version'], function () {
+gulp.task('bump', ['bump-version'], function (cb) {
     console.log('Successfully bumped version to: ' + version);
+    cb();
 });
 
 // Writes the current version of Git to the console
