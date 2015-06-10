@@ -330,6 +330,7 @@ gulp.task('release', function (callback) {
 function done() { }
 
 function orchestrateSubmodules(taskRootName, command, cb) {
+    console.log('taskRootName: ' + taskRootName);
     var orchestrator = new Orchestrator();
     var taskNames = [];
 
