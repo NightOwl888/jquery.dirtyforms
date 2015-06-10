@@ -258,7 +258,7 @@ gulp.task('git-release-modules', function (cb) {
     }
 });
 
-gulp.task('git-add', ['git-submodule-add'], function (cb) {
+gulp.task('git-add', function (cb) {
     git.exec({ args: 'add -A', cwd: './' }, cb);
 });
 
