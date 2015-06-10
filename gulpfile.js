@@ -16,8 +16,8 @@ var gulp = require('gulp'),
     git = require('gulp-git'),
     glob = require('glob'),
     path = require('path'),
-    Q = require('q');//,
-    //Orchestrator = require('orchestrator');
+    Q = require('q'),
+    Orchestrator = require('orchestrator');
 var args = require('yargs').argv;
 // All of the git submodule names (individual releases) for the build
 var subModules = getSubmoduleNames();
@@ -212,7 +212,7 @@ gulp.task('git-commit-submodule', function () {
     // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
     setTimeout(function () {
         deferred.resolve();
-    }, 7000);
+    }, 10000);
 
     return deferred.promise;
 });
@@ -243,7 +243,7 @@ gulp.task('git-commit', ['git-commit-submodule'], function () {
     // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
     setTimeout(function () {
         deferred.resolve();
-    }, 7000);
+    }, 10000);
 
     return deferred.promise;
 });
@@ -274,26 +274,55 @@ gulp.task('git-update-submodule-final', ['git-tag'], function (cb) {
     git.updateSubmodule({ cwd: './', quiet: false }, cb);
 });
 
-gulp.task('git-push-submodule', ['git-update-submodule-final'], function () {
-    var command = function (cwd) {
-        git.push('origin', 'master', { args: '--follow-tags', cwd: cwd, quiet: false }, function (err) {
-            if (err) throw err;
+gulp.task('git-push-submodule', ['git-update-submodule-final'], function (cb) {
+    var orchestrator = new Orchestrator();
+    var taskNames = [];
+    var taskRootName = 'git-push-submodule-';
+
+    var modulesLength = subModules.length;
+    for (var i = 0; i < modulesLength; i++) {
+        var subModule = subModules[i];
+        var taskName = taskRootName + subModule;
+        var cwd = distributionFolder + subModule;
+
+        orchestrator.add(taskName, function (callback) {
+            var cwd2 = cwd;
+            git.push('origin', 'master', { args: '--follow-tags', cwd: cwd2, quiet: false }, callback, function (err) {
+                if (err) throw err;
+            });
         });
-    };
 
-    var deferred = Q.defer();
+        // Add the task name 
+        taskNames.push(taskName);
 
-    // Push submodules
-    runCommandOnSubmodules(command);
 
-    // This is here to force the command to wait before returning...
-    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
-    setTimeout(function () {
-        deferred.resolve();
-    }, 10000);
+        // Pass in the working directory for the git command.
+        //command(distributionFolder + subModule);
+    }
 
-    return deferred.promise;
+    orchestrator.start(taskNames, cb);
 });
+
+//gulp.task('git-push-submodule', ['git-update-submodule-final'], function () {
+//    var command = function (cwd) {
+//        git.push('origin', 'master', { args: '--follow-tags', cwd: cwd, quiet: false }, function (err) {
+//            if (err) throw err;
+//        });
+//    };
+
+//    var deferred = Q.defer();
+
+//    // Push submodules
+//    runCommandOnSubmodules(command);
+
+//    // This is here to force the command to wait before returning...
+//    // Couldn't find a better way to run multiple commands in a loop and wait for them to complete.
+//    setTimeout(function () {
+//        deferred.resolve();
+//    }, 10000);
+
+//    return deferred.promise;
+//});
 
 gulp.task('git-push', ['git-push-submodule'], function (cb) {
     git.push('origin', 'master', { args: '--follow-tags', cwd: './', quiet: false }, cb, function (err) {
