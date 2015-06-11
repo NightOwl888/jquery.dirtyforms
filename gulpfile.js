@@ -157,7 +157,7 @@ gulp.task('git-version', function (cb) {
 });
 
 gulp.task('git-submodule-update-init', function (cb) {
-    git.updateSubmodule({ args: '--init', cwd: './' }, cb);
+    git.updateSubmodule({ args: '--init --recursive', cwd: './' }, cb);
 
     //console.log('Initializing Git submodules...');
     //if (shell.exec('git submodule init').code != 0) {
