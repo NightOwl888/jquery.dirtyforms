@@ -1,6 +1,5 @@
 # git ignore file
 
-/dist
 /node_modules
 *.nupkg
 /nuget.exe
