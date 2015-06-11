@@ -246,7 +246,8 @@ gulp.task('git-add', function (cb) {
 });
 
 gulp.task('git-commit', ['git-add'], function () {
-    return gulp.src('./*.json')
+    // TODO: Update this to ensure all of the submodules are included in the commit
+    return gulp.src(['./dist/jquery.dirtyforms', './package.json'], { base: './' })
         .pipe(git.commit('Release version ' + version, { cwd: './' }));
 });
 
