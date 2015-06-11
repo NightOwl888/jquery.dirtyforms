@@ -229,7 +229,7 @@ gulp.task('git-release-modules', function (cb) {
                 }
                 else {
                     console.log('Pushing Git submodule ' + relativeWorkingPath + '...');
-                    if (shell.exec('cd "' + relativeWorkingPath + '" && git push origin master').code != 0) {
+                    if (shell.exec('cd "' + relativeWorkingPath + '" && git push origin master --follow-tags').code != 0) {
                         shell.echo('Error: Git push failed for ' + relativeWorkingPath);
                         shell.exit(1);
                     }
