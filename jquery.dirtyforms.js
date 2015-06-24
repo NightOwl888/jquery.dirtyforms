@@ -251,8 +251,10 @@
         deciding: false,
         decidingEvent: false,
         currentForm: false,
+        /*<log>*/
         hasFirebug: "console" in window && "firebug" in window.console,
         hasConsoleLog: "console" in window && "log" in window.console,
+        /*</log>*/
         focused: { "element": false, "value": false }
     }, $.DirtyForms);
 
