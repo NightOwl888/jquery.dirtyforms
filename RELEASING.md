@@ -111,7 +111,7 @@ npm test
 
   5. Copy and paste the version number into the `Release title`. 
 
-  6. Add the header `#Change Log`. 
+  6. Add the header `### Change Log`. 
 
   7. Summarize the commits in the release by doing the following: 
 
