@@ -30,7 +30,9 @@
     // Public General Plugin methods $.DirtyForms
     $.extend({
         DirtyForms: {
+            /*<log>*/
             debug: false,
+            /*</log>*/
             message: 'You\'ve made changes on this page which aren\'t saved. If you leave you will lose these changes.',
             title: 'Are you sure you want to do that?',
             dirtyClass: 'dirty',
@@ -92,11 +94,13 @@
 
             decidingCancel: function (e) {
                 decidingCancel(e);
-            },
+            }
 
+            /*<log>*/,
             dirtylog: function (msg) {
                 dirtylog(msg);
             }
+            /*</log>*/
         }
     });
 
@@ -287,6 +291,7 @@
 			(settings.focused.element.val() !== settings.focused.value);
     };
 
+    /*<log>*/
     var dirtylog = function (msg) {
         if (!$.DirtyForms.debug) return;
         msg = "[DirtyForms] " + msg;
@@ -298,6 +303,7 @@
             alert(msg);
         }
     };
+    /*</log>*/
 
     var bindExit = function () {
         if (settings.exitBound) return;
