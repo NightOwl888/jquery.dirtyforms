@@ -157,13 +157,6 @@
                         return true;
                     }
                 }
-                // For backward compatibility, we call isNodeDirty (deprecated)
-                if ("isNodeDirty" in obj) {
-                    if (obj.isNodeDirty(node)) {
-                        isDirty = true;
-                        return true;
-                    }
-                }
             });
 
             dirtylog('isDirty returned ' + isDirty);
