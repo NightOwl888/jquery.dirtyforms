@@ -12,12 +12,12 @@ License MIT
         define(['jquery'], factory);
     } else if (typeof exports === 'object') {
         // Node/CommonJS
-        module.exports = factory(require('jquery'));
+        module.exports = factory(require('jquery'), window, document);
     } else {
         // Browser globals
-        factory(jQuery);
+        factory(jQuery, window, document);
     }
-}(function ($) {
+}(function ($, window, document, undefined) {
     if (!$.isFunction($().on)) {
         // Patch jQuery 1.4.2 - 1.7 with an on function (that uses delegate).
         $.fn.on = function (events, selector, data, handler) {
