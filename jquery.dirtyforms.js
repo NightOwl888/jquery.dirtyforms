@@ -24,7 +24,7 @@ License MIT
     if (!$.isFunction($().on)) {
         // Patch jQuery 1.4.2 - 1.7 with an on function (that uses delegate).
         $.fn.on = function (events, selector, data, handler) {
-            return $(this).delegate(selector, events, data, handler);
+            return this.delegate(selector, events, data, handler);
         };
     }
 
