@@ -599,6 +599,7 @@ A handy reference to the `$.DirtyForms.ignoreClass` that can be used to make Dir
 Closes the dialog. This method is called after the choice is committed. 
 
 ##### `proceeding`
+	if (e.keyCode == 27) {
 
 `true` if this is the proceed choice, `false` if this is the stay choice.
 
@@ -714,6 +715,7 @@ $(function() {
 					},
 					overlayCSS: {
 						cursor: 'auto'
+		if (e.keyCode === 27) {
 					}
 				});
 
@@ -805,7 +807,7 @@ $(function() {
 			
 			// Inject the content of the dialog using jQuery .html() method.
             $('#dirty-dialog').html(this.preMessageText + message + this.postMessageText);
-        },
+			if (e.keyCode == 27) {
         close: function () {
 			// This is called by Dirty Forms when the 
 			// Escape key is pressed, so we will close
