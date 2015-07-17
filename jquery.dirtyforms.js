@@ -34,6 +34,15 @@ License MIT
                                 // stash dialog will close, so we guard against calling close in that case. 
                                 if (!settings.dialogStash) {
                                 }
+                    // Return false to break out of the .each() function
+                    return true;
+            // Skip helpers if we are already dirty.
+            if (isDirty) return true;
+
+                        // Return false to break out of the .each() function
+                        return true;
+                        // Return false to break out of the .each() function
+                        return true;
     $.fn.dirtyForms = function (method) {
         // Method calling logic
         if (methods[method]) {

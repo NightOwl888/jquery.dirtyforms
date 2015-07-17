@@ -42,7 +42,6 @@ License MIT
                         if ($field.tinymce().isDirty()) {
                             isDirty = true;
                             $.DirtyForms.dirtylog('Node was totally dirty.');
-                            // Return false to stop iterating.
                             return false;
                         }
                     } else {
