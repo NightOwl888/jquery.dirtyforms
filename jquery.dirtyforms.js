@@ -28,6 +28,7 @@ License MIT
         };
     }
 
+                    var content = '<h1>' + title + '</h1><p>' + message + '</p><p><a href="#" class="ignoredirty button medium red continue">Continue</a><a href="#" class="ignoredirty button medium cancel">Stop</a>';
                             if (e.type !== 'keydown' || (e.type === 'keydown' && e.keyCode === 27)) {
                                 // Facebox hack: If we call close when returning from the stash, the
                                 // stash dialog will close, so we guard against calling close in that case. 
