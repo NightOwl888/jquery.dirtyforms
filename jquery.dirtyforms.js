@@ -28,6 +28,10 @@ License MIT
         };
     }
 
+                                // Facebox hack: If we call close when returning from the stash, the
+                                // stash dialog will close, so we guard against calling close in that case. 
+                                if (!settings.dialogStash) {
+                                }
     $.fn.dirtyForms = function (method) {
         // Method calling logic
         if (methods[method]) {
