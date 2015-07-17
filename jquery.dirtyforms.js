@@ -547,6 +547,7 @@ License MIT
     };
 
     var refire = function (ev) {
+        $(document).trigger('beforeRefire.dirtyforms')
         if (ev.type === 'click') {
             dirtylog("Refiring click event");
             events.onRefireClick(ev);
